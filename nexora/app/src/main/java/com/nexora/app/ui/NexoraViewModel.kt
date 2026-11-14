@@ -108,6 +108,9 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setOnboarded() = viewModelScope.launch { interfaceRepo.setOnboarded(true) }
 
+    /** Called once on first launch so the welcome sheet is shown exactly once. */
+    suspend fun ensureOnboardedState(): Boolean = interfaceRepo.current().onboarded
+
     // ---- alarms -----------------------------------------------------------------
 
     val alarms: StateFlow<List<Alarm>> = alarmRepo.observeAlarms()
@@ -234,7 +237,7 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
         nextAlarmMillis = scheduler.nextAlarmMillis(),
         enabledCount = alarms.value.count { it.enabled },
         totalCount = alarms.value.size,
-        ringingCount = db.alarmInstanceDao().let { 0 },
+        ringingCount = 0,
         batteryOptimised = com.nexora.app.platform.PowerGuidance.isIgnoringBatteryOptimisations(context),
         ringtoneIssue = alarms.value.firstOrNull { !scheduler.ringtoneAvailable(it.ringtoneUri) }?.label,
         realmeUiDetected = device.isRealmeUi,

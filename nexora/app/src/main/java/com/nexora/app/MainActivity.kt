@@ -4,18 +4,18 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.LaunchedEffect
+import androidx.activity.viewModels
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import com.nexora.app.alarm.NotificationHelper
 import com.nexora.app.design.GlassSpec
 import com.nexora.app.design.LocalGlassQuality
@@ -23,34 +23,27 @@ import com.nexora.app.design.LocalGlassSpec
 import com.nexora.app.design.LocalMotionEnabled
 import com.nexora.app.ui.NexoraViewModel
 import com.nexora.app.ui.RootScaffold
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.Composable
-import androidx.activity.viewModels
-import kotlinx.coroutines.launch
 
 /**
  * The only Activity.
  *
- * It does three things: owns the ViewModel, forwards notification/intent entry points
- * into navigation state, and hosts the Compose tree. All alarm actions are handled by
- * receivers and the service — this Activity never has to be alive for an alarm to stop.
+ * Responsibilities are deliberately narrow: own the ViewModel, translate incoming
+ * intents (notification taps, SHOW_ALARMS, SET_ALARM) into navigation state, and host the
+ * Compose tree. **No alarm action depends on this Activity being alive** — stopping an
+ * alarm is handled by a BroadcastReceiver and the foreground service, so a dead or
+ * destroyed Activity cannot leave a ringtone playing.
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     private val viewModel: NexoraViewModel by viewModels()
 
-    private var pendingAlarm by mutableStateOf<Long?>(null)
-    private var pendingTrigger by mutableStateOf<Long?>(null)
-    private var pendingTask by mutableStateOf<Long?>(null)
+    private var pendingAlarmId by mutableStateOf<Long?>(null)
+    private var pendingTriggerAt by mutableStateOf<Long?>(null)
+    private var pendingTaskId by mutableStateOf<Long?>(null)
     private var pendingRoute by mutableStateOf<String?>(null)
 
-    private val notificationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (!granted) {
-            // Not fatal: alarms still ring in-app and the health centre reports the state.
-        }
-    }
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* reported in Health Centre */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,21 +55,24 @@ class MainActivity : AppCompatActivity() {
             val profileSet by viewModel.profiles.collectAsStateWithLifecycle()
             val quality by viewModel.effectiveQuality.collectAsStateWithLifecycle()
             val reducedMotion by viewModel.reducedMotion.collectAsStateWithLifecycle()
-
             val spec: GlassSpec = profileSet.spec(reducedMotion)
 
-            NexoraRoot(spec = spec, quality = quality, reducedMotion = reducedMotion) {
+            CompositionLocalProvider(
+                LocalGlassSpec provides spec,
+                LocalGlassQuality provides quality,
+                LocalMotionEnabled provides !spec.reducedOrOff,
+            ) {
                 RootScaffold(
                     viewModel = viewModel,
                     spec = spec,
-                    pendingAlarmId = pendingAlarm,
-                    pendingTriggerAt = pendingTrigger,
-                    pendingTaskId = pendingTask,
+                    pendingAlarmId = pendingAlarmId,
+                    pendingTriggerAt = pendingTriggerAt,
+                    pendingTaskId = pendingTaskId,
                     pendingRoute = pendingRoute,
                     onConsumePending = {
-                        pendingAlarm = null
-                        pendingTrigger = null
-                        pendingTask = null
+                        pendingAlarmId = null
+                        pendingTriggerAt = null
+                        pendingTaskId = null
                         pendingRoute = null
                     },
                 )
@@ -84,25 +80,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestStartupPermissions()
-
-        lifecycleScope.launch {
-            handleIntentAsync(intent)
-            viewModel.setOnboardedIfNeeded()
-        }
-    }
-
-    private fun NexoraRoot(
-        spec: GlassSpec,
-        quality: com.nexora.app.design.GlassQuality,
-        reducedMotion: Boolean,
-        content: @Composable () -> Unit,
-    ) {
-        CompositionLocalProvider(
-            LocalGlassSpec provides spec,
-            LocalGlassQuality provides quality,
-            LocalMotionEnabled provides !spec.reducedOrOff,
-            content = content,
-        )
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -115,25 +92,15 @@ class MainActivity : AppCompatActivity() {
         intent ?: return
         when (intent.action) {
             ACTION_ALARM_RINGING -> {
-                pendingAlarm = intent.getLongExtra(EXTRA_ALARM_ID, -1L).takeIf { it > 0 }
-                pendingTrigger = intent.getLongExtra(EXTRA_TRIGGER_AT, 0L)
+                pendingAlarmId = intent.getLongExtra(EXTRA_ALARM_ID, -1L).takeIf { it > 0L }
+                pendingTriggerAt = intent.getLongExtra(EXTRA_TRIGGER_AT, 0L).takeIf { it > 0L }
             }
-            ACTION_OPEN_REMINDER -> {
-                pendingTask = intent.getLongExtra(EXTRA_TASK_ID, -1L).takeIf { it > 0 }
-            }
-            ACTION_OPEN_ALARMS, androidx.appcompat.R.string.abc_action_bar_home_description -> {
-                pendingRoute = "alarm"
-            }
-            Intent.ACTION_SET_ALARM -> {
-                pendingRoute = "alarm"
-            }
+            ACTION_OPEN_REMINDER ->
+                pendingTaskId = intent.getLongExtra(EXTRA_TASK_ID, -1L).takeIf { it > 0L }
+            ACTION_OPEN_ALARMS, ACTION_SHOW_ALARM, Intent.ACTION_SET_ALARM, Intent.ACTION_SHOW_ALARMS ->
+                pendingRoute = "alarms"
             else -> Unit
         }
-    }
-
-    private suspend fun handleIntentAsync(intent: Intent?) {
-        intent ?: return
-        // Nothing needs suspending yet; kept as a seam for future deep links.
     }
 
     override fun onResume() {
@@ -142,15 +109,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestStartupPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (!NotificationHelper.canPost(this)) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
         NotificationHelper.ensureChannel(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !NotificationHelper.canPost(this)) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
-
-    private fun NexoraViewModel.setOnboardedIfNeeded() = Unit
 
     companion object {
         const val ACTION_ALARM_RINGING = "com.nexora.app.ALARM_RINGING"
