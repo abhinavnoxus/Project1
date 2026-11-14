@@ -77,45 +77,12 @@ jobs:
       - name: Collect results
         if: always()
         run: |
-          {
-            echo "## NEXORA build report"
-            echo ""
-            echo "| step | outcome |"
-            echo "|---|---|"
-            echo "| assembleDebug | ${{ steps.assemble.outcome }} |"
-            echo "| unitTest | ${{ steps.unit.outcome }} |"
-            echo "| lint | ${{ steps.lint.outcome }} |"
-            echo "| assembleRelease | ${{ steps.release.outcome }} |"
-            echo ""
-            echo "### Test summary"
-            if ls app/build/test-results/testDebugUnitTest/*.xml >/dev/null 2>&1; then
-              python3 - <<'PY'
-import glob, xml.etree.ElementTree as ET
-t=f=e=s=0
-for p in glob.glob('app/build/test-results/testDebugUnitTest/*.xml'):
-    r=ET.parse(p).getroot()
-    t+=int(r.get('tests',0)); f+=int(r.get('failures',0)); e+=int(r.get('errors',0)); s+=int(r.get('skipped',0))
-print(f"tests={t} failures={f} errors={e} skipped={s}")
-PY
-            else
-              echo "_no test result xml_"
-            fi
-            echo ""
-            echo "<details><summary>assemble log (tail)</summary>"
-            echo ""
-            echo '```'
-            tail -n 120 /tmp/assemble.log 2>/dev/null || true
-            echo '```'
-            echo "</details>"
-            echo ""
-            echo "<details><summary>unit test log (tail)</summary>"
-            echo ""
-            echo '```'
-            tail -n 80 /tmp/unit.log 2>/dev/null || true
-            echo '```'
-            echo "</details>"
-          } > /tmp/report.md
-          cat /tmp/report.md
+          bash ./scripts/ci-report.sh \
+            "${{ steps.assemble.outcome }}" \
+            "${{ steps.unit.outcome }}" \
+            "${{ steps.lint.outcome }}" \
+            "${{ steps.release.outcome }}" \
+            /tmp/report.md
 
       - name: Publish report to issue
         if: always()
