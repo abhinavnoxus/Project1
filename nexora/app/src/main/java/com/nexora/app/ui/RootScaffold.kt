@@ -150,6 +150,12 @@ fun RootScaffold(
     val today by viewModel.today.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
     val reducedMotion by viewModel.reducedMotionFlow.collectAsStateWithLifecycle()
+    val focusPlanned by viewModel.focusPlannedMinutes.collectAsStateWithLifecycle()
+
+    var routineStreaks by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+    LaunchedEffect(routines, routineLogs) {
+        routineStreaks = viewModel.routineStreaks()
+    }
 
     val layout = profiles.layout()
     val activeProfile = profiles.active
@@ -164,11 +170,10 @@ fun RootScaffold(
     var zonedNow by remember { mutableStateOf(ZonedDateTime.now()) }
     LaunchedEffect(now) { zonedNow = ZonedDateTime.now(ZoneId.systemDefault()) }
 
-    // ------------------------------ timers & stopwatch (in-memory, restorable)
-    val timers = remember { mutableStateListOf<TimerState>() }
-    var stopwatchStart by remember { mutableStateOf<Long?>(null) }
-    var stopwatchAccum by remember { mutableStateOf(0L) }
-    var stopwatchLaps by remember { mutableStateOf(listOf<Long>()) }
+    // ------------------------------ timers & stopwatch live in the ViewModel so they
+    // survive configuration changes; only the display ticker is local.
+    val timers by viewModel.timers.collectAsStateWithLifecycle()
+    val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
     var tick by remember { mutableStateOf(0L) }
 
     LaunchedEffect(Unit) {
@@ -198,6 +203,37 @@ fun RootScaffold(
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
+
+    val importProfile = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val raw = runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            }.getOrNull()
+            if (raw == null) {
+                snack = "Could not read that file"
+            } else {
+                val count = runCatching { viewModel.importProfiles(raw) }.getOrDefault(0)
+                snack = if (count > 0) "Imported $count profile(s)" else "No NEXORA profiles found in that file"
+            }
+        }
+    }
+
+    val exportProfile = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val json = viewModel.exportActiveProfile()
+            val ok = runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(json) }
+                true
+            }.getOrDefault(false)
+            snack = if (ok) "Profile exported" else "Export failed"
+        }
+    }
 
     // ------------------------------ intent wiring
     LaunchedEffect(pendingAlarmId, pendingTriggerAt) {
@@ -302,31 +338,14 @@ fun RootScaffold(
                                 )
 
                                 Destination.Time -> TimersScreen(
-                                    timers = timers.toList(),
+                                    timers = timers,
                                     now = tick,
                                     spec = spec,
                                     presetMinutes = listOf(1, 3, 5, 10, 15, 25, 45, 60),
-                                    onAdd = { minutes ->
-                                        timers += TimerState(
-                                            id = System.nanoTime(),
-                                            label = "$minutes minute timer",
-                                            durationMillis = minutes * 60_000L,
-                                            startedAt = System.currentTimeMillis(),
-                                        )
-                                    },
-                                    onPause = { id ->
-                                        timers.replaceAll { t ->
-                                            if (t.id != id || t.pausedAt != null) t
-                                            else t.copy(pausedAt = System.currentTimeMillis(), elapsedBeforePause = t.elapsed(System.currentTimeMillis()))
-                                        }
-                                    },
-                                    onResume = { id ->
-                                        timers.replaceAll { t ->
-                                            if (t.id != id || t.pausedAt == null) t
-                                            else t.copy(pausedAt = null, startedAt = System.currentTimeMillis())
-                                        }
-                                    },
-                                    onCancel = { id -> timers.removeAll { it.id == id } },
+                                    onAdd = { minutes -> viewModel.addTimer(minutes) },
+                                    onPause = viewModel::pauseTimer,
+                                    onResume = viewModel::resumeTimer,
+                                    onCancel = viewModel::cancelTimer,
                                     onOpenStopwatch = { overlay = Overlay.Stopwatch },
                                 )
 
@@ -384,16 +403,8 @@ fun RootScaffold(
                                 viewModel.resetInterface()
                                 snack = "Interface reset to NEXORA Crystal"
                             },
-                            onExport = {
-                                scope.launch {
-                                    val json = viewModel.exportActiveProfile()
-                                    val dir = java.io.File(context.cacheDir, "exports").apply { mkdirs() }
-                                    val file = java.io.File(dir, "nexora-profile-${System.currentTimeMillis()}.json")
-                                    runCatching { file.writeText(json) }
-                                    snack = "Exported to ${file.name} (${json.length} bytes)"
-                                }
-                            },
-                            onImport = { snack = "Import expects a NEXORA profile JSON file; paste support lands in 1.1" },
+                            onExport = { exportProfile.launch("nexora-profile.json") },
+                            onImport = { importProfile.launch(arrayOf("application/json", "text/plain", "*/*")) },
                         )
 
                         Overlay.Settings -> SettingsScreen(
@@ -450,44 +461,28 @@ fun RootScaffold(
                         )
 
                         Overlay.Stopwatch -> StopwatchScreen(
-                            elapsedMillis = stopwatchStart?.let { stopwatchAccum + (tick - it) } ?: stopwatchAccum,
-                            laps = stopwatchLaps,
-                            running = stopwatchStart != null,
+                            elapsedMillis = stopwatch.elapsed(tick),
+                            laps = stopwatch.laps,
+                            running = stopwatch.isRunning,
                             spec = spec,
-                            onStart = { stopwatchStart = System.currentTimeMillis() },
-                            onStop = {
-                                stopwatchStart?.let { start -> stopwatchAccum += System.currentTimeMillis() - start }
-                                stopwatchStart = null
-                            },
-                            onLap = {
-                                stopwatchStart?.let { start ->
-                                    stopwatchLaps = stopwatchLaps + (stopwatchAccum + (System.currentTimeMillis() - start))
-                                }
-                            },
-                            onReset = {
-                                stopwatchStart = null
-                                stopwatchAccum = 0L
-                                stopwatchLaps = emptyList()
-                            },
+                            onStart = viewModel::stopwatchStart,
+                            onStop = viewModel::stopwatchStop,
+                            onLap = viewModel::stopwatchLap,
+                            onReset = viewModel::stopwatchReset,
                         )
 
                         Overlay.Focus -> FocusScreen(
                             active = activeFocus != null,
                             startedAt = focusStart,
-                            plannedMinutes = 25,
+                            plannedMinutes = focusPlanned,
                             label = "Focus",
                             sessions = focusSessions,
                             spec = spec,
                             onStart = { minutes, label -> viewModel.startFocus(minutes, label) },
-                            onExtend = { /* extension is applied to the running session label */ },
+                            onExtend = { minutes -> viewModel.extendFocus(minutes) },
                             onEnd = { completed -> viewModel.endFocus(completed) },
                             onStartBreak = {
-                                timers += TimerState(
-                                    id = System.nanoTime(),
-                                    label = "Break",
-                                    durationMillis = 5 * 60_000L,
-                                    startedAt = System.currentTimeMillis(),
-                                )
+                                viewModel.addTimer(5, "Break")
                                 destination = Destination.Time
                                 overlay = null
                             },
@@ -512,7 +507,7 @@ fun RootScaffold(
                         Overlay.Routines -> RoutinesScreen(
                             routines = routines,
                             completedToday = routineLogs,
-                            streaks = emptyMap(),
+                            streaks = routineStreaks,
                             spec = spec,
                             onComplete = viewModel::completeRoutine,
                             onSave = viewModel::saveRoutine,

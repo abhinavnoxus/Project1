@@ -141,6 +141,9 @@ interface FocusDao {
     @Insert
     suspend fun insert(session: FocusSessionEntity): Long
 
+    @Query("UPDATE focus_sessions SET plannedMinutes = :minutes WHERE id = :id")
+    suspend fun setPlanned(id: Long, minutes: Int)
+
     @Query("UPDATE focus_sessions SET endedAt = :endedAt, completed = :completed, interrupted = :interrupted WHERE id = :id")
     suspend fun finish(id: Long, endedAt: Long, completed: Boolean, interrupted: Boolean)
 

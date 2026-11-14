@@ -58,6 +58,22 @@ class RoutineRepository(private val db: NexoraDatabase) {
         )
     }
 
+    /** Streak length for every routine, in one pass over the log table. */
+    suspend fun streaks(today: LocalDate): Map<Long, Int> {
+        val logs = db.routineDao().allLogs()
+        val byRoutine = logs.groupBy { it.routineId }.mapValues { (_, rows) -> rows.map { it.dayEpoch }.toSet() }
+        return byRoutine.mapValues { (_, days) ->
+            var streak = 0
+            var cursor = today
+            while (days.contains(cursor.toEpochDay())) {
+                streak++
+                cursor = cursor.minusDays(1)
+                if (streak > 1000) break
+            }
+            streak
+        }
+    }
+
     suspend fun completionStreak(routineId: Long, today: LocalDate): Int {
         val logs = db.routineDao().logsSince(routineId, today.toEpochDay() - 120).map { it.dayEpoch }.toSet()
         var streak = 0

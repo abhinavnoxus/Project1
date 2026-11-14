@@ -49,6 +49,7 @@ import com.nexora.app.ui.common.GlassPanel
 import com.nexora.app.ui.common.PillTag
 
 /** A running countdown, described by absolute instants so it survives process death. */
+@kotlinx.serialization.Serializable
 data class TimerState(
     val id: Long,
     val label: String,

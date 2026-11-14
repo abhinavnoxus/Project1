@@ -185,6 +185,12 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteRoutine(id: Long) = viewModelScope.launch(Dispatchers.IO) { routineRepo.delete(id) }
 
+    /** Consecutive completed days per routine, computed from stored logs. */
+    suspend fun routineStreaks(): Map<Long, Int> = withContext(Dispatchers.IO) {
+        val day = todayState.value
+        routineRepo.streaks(day)
+    }
+
     // ------------------------------------------------------------------- focus
 
     val focusSessions: StateFlow<List<FocusSession>> = focusRepo.observeRecent(40)
@@ -199,14 +205,124 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
     fun startFocus(minutes: Int, label: String) = viewModelScope.launch(Dispatchers.IO) {
         val id = focusRepo.start(minutes, label)
         focusStartedAt.value = System.currentTimeMillis()
+        focusPlanned.value = minutes
         activeFocusId.value = id
+    }
+
+    private val focusPlanned = MutableStateFlow(25)
+    val focusPlannedMinutes: StateFlow<Int> = focusPlanned.asStateFlow()
+
+    /** Extends a running session by [minutes] and persists the new plan. */
+    fun extendFocus(minutes: Int) = viewModelScope.launch(Dispatchers.IO) {
+        val id = activeFocusId.value ?: return@launch
+        val next = focusPlanned.value + minutes
+        focusPlanned.value = next
+        db.focusDao().setPlanned(id, next)
     }
 
     fun endFocus(completed: Boolean) = viewModelScope.launch(Dispatchers.IO) {
         activeFocusId.value?.let { focusRepo.finish(it, completed, !completed) }
         activeFocusId.value = null
         focusStartedAt.value = 0L
+        focusPlanned.value = 25
     }
+
+    // ------------------------------------------------------------------ timers
+
+    private val timerState = MutableStateFlow<List<com.nexora.app.ui.clock.TimerState>>(emptyList())
+    val timers: StateFlow<List<com.nexora.app.ui.clock.TimerState>> = timerState.asStateFlow()
+
+    private val stopwatchState = MutableStateFlow(StopwatchState())
+    val stopwatch: StateFlow<StopwatchState> = stopwatchState.asStateFlow()
+
+    private val timerJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+    init {
+        // Restore timers stored as absolute instants so a process restart keeps them.
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val raw = interfaceRepo.loadTimers() ?: return@runCatching
+                timerState.value = timerJson.decodeFromString<
+                    List<com.nexora.app.ui.clock.TimerState>>(raw)
+            }
+        }
+    }
+
+    private fun persistTimers() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                interfaceRepo.saveTimers(timerJson.encodeToString(
+                    kotlinx.serialization.builtins.ListSerializer(
+                        com.nexora.app.ui.clock.TimerState.serializer()
+                    ),
+                    timerState.value,
+                ))
+            }
+        }
+    }
+
+    fun addTimer(minutes: Int, label: String = "$minutes minute timer") {
+        timerState.value = timerState.value + com.nexora.app.ui.clock.TimerState(
+            id = System.nanoTime(),
+            label = label,
+            durationMillis = minutes * 60_000L,
+            startedAt = System.currentTimeMillis(),
+        )
+        persistTimers()
+    }
+
+    fun pauseTimer(id: Long) {
+        val now = System.currentTimeMillis()
+        timerState.value = timerState.value.map { timer ->
+            if (timer.id != id || timer.pausedAt != null) timer
+            else timer.copy(pausedAt = now, elapsedBeforePause = timer.elapsed(now))
+        }
+    }
+
+    fun resumeTimer(id: Long) {
+        val now = System.currentTimeMillis()
+        timerState.value = timerState.value.map { timer ->
+            if (timer.id != id || timer.pausedAt == null) timer
+            else timer.copy(pausedAt = null, startedAt = now)
+        }
+    }
+
+    fun cancelTimer(id: Long) {
+        timerState.value = timerState.value.filterNot { it.id == id }
+        persistTimers()
+    }
+
+    /** Returns the timers that just finished, and removes them. Called by the UI ticker. */
+    fun collectFinishedTimers(now: Long): List<com.nexora.app.ui.clock.TimerState> {
+        val finished = timerState.value.filter { it.pausedAt == null && it.remaining(now) <= 0L }
+        if (finished.isNotEmpty()) {
+            timerState.value = timerState.value - finished.toSet()
+            persistTimers()
+        }
+        return finished
+    }
+
+    fun stopwatchStart() {
+        stopwatchState.value = stopwatchState.value.copy(runningSince = System.currentTimeMillis())
+    }
+
+    fun stopwatchStop() {
+        val current = stopwatchState.value
+        val started = current.runningSince ?: return
+        stopwatchState.value = current.copy(
+            accumulated = current.accumulated + (System.currentTimeMillis() - started),
+            runningSince = null,
+        )
+    }
+
+    fun stopwatchLap() {
+        val current = stopwatchState.value
+        val started = current.runningSince ?: return
+        val total = current.accumulated + (System.currentTimeMillis() - started)
+        stopwatchState.value = current.copy(laps = current.laps + total)
+    }
+
+    fun stopwatchReset() { stopwatchState.value = StopwatchState() }
 
     // ---------------------------------------------------------------- calendar
 
@@ -269,6 +385,15 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
             sdkInt = device.sdkInt,
         )
     }
+}
+
+data class StopwatchState(
+    val accumulated: Long = 0L,
+    val runningSince: Long? = null,
+    val laps: List<Long> = emptyList(),
+) {
+    val isRunning: Boolean get() = runningSince != null
+    fun elapsed(now: Long): Long = accumulated + (runningSince?.let { (now - it).coerceAtLeast(0L) } ?: 0L)
 }
 
 data class AlarmHealth(

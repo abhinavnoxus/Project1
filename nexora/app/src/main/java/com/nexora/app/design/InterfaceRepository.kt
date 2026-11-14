@@ -33,7 +33,7 @@ class InterfaceRepository(private val context: Context) {
     private val activeIdKey = stringPreferencesKey("active_profile_id")
     private val qualityKey = stringPreferencesKey("quality_override")
     private val onboardedKey = booleanPreferencesKey("onboarded")
-    private val lastBackupKey = floatPreferencesKey("last_backup_at")
+    private val timersKey = stringPreferencesKey("timers_json")
 
     private fun Preferences.decode(): ProfileSet {
         val raw = this[profilesKey]
@@ -125,6 +125,19 @@ class InterfaceRepository(private val context: Context) {
     suspend fun setQualityOverride(quality: GlassQuality?) = update { it.copy(qualityOverride = quality) }
 
     suspend fun setOnboarded(value: Boolean) = update { it.copy(onboarded = value) }
+
+    /**
+     * Timers are stored as absolute instants, so a timer started at 10:00 and
+     * backgrounded still knows exactly how much time is left on the next launch.
+     */
+    suspend fun saveTimers(json: String) {
+        context.interfaceStore.edit { it[timersKey] = json }
+    }
+
+    suspend fun loadTimers(): String? {
+        val prefs = context.interfaceStore.data.catch { emit(emptyPreferences()) }.first()
+        return prefs[timersKey]
+    }
 
     suspend fun importProfiles(raw: String): Int {
         val parsed = runCatching { json.decodeFromString<List<InterfaceProfile>>(raw) }.getOrNull() ?: return 0
