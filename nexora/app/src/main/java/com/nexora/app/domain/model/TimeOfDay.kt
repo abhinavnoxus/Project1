@@ -56,9 +56,18 @@ data class TimeOfDay(val minuteOfDay: Int) : Comparable<TimeOfDay> {
 @JvmInline
 @Serializable
 value class WeekdayMask(val bits: Int = 0) {
-    fun contains(day: java.time.DayOfWeek): Boolean = bits and (1 shl day.value) != 0
+    /**
+     * Bit 0 = Monday … bit 6 = Sunday.
+     *
+     * `DayOfWeek.value` is 1-based (Monday = 1 … Sunday = 7), so it must be shifted down
+     * by one. Using the raw value put Sunday on bit 7, where no preset mask reaches it —
+     * which silently prevented every Sunday alarm from ever firing.
+     */
+    private fun bitFor(day: java.time.DayOfWeek): Int = 1 shl (day.value - 1)
+
+    fun contains(day: java.time.DayOfWeek): Boolean = bits and bitFor(day) != 0
     fun with(day: java.time.DayOfWeek, on: Boolean = true): WeekdayMask {
-        val mask = 1 shl day.value
+        val mask = bitFor(day)
         return WeekdayMask(if (on) bits or mask else bits and mask.inv())
     }
 
@@ -80,7 +89,7 @@ value class WeekdayMask(val bits: Int = 0) {
 
         fun of(vararg days: java.time.DayOfWeek): WeekdayMask {
             var b = 0
-            days.forEach { b = b or (1 shl it.value) }
+            days.forEach { b = b or (1 shl (it.value - 1)) }
             return WeekdayMask(b)
         }
     }
