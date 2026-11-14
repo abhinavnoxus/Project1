@@ -50,11 +50,12 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          ./gradlew :app:assembleDebug --stacktrace 2>&1 | tee /tmp/assemble.log | tail -n 200
+          ./gradlew :app:assembleDebug --console=plain 2>&1 | tee /tmp/assemble.log | tail -n 40
 
       - name: Unit tests
         id: unit
         continue-on-error: true
+        if: steps.assemble.outcome == 'success' 
         run: |
           set -o pipefail
           ./gradlew :app:testDebugUnitTest 2>&1 | tee /tmp/unit.log | tail -n 120

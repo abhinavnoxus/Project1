@@ -18,7 +18,14 @@ OUT="${5:-/tmp/report.md}"
   echo "### Build errors"
   echo
   echo '```'
-  grep -nE "^e: |^w: .*error|error: |What went wrong|Execution failed for task|Caused by:|> Task .* FAILED|Unresolved reference|FAILURE:" /tmp/assemble.log 2>/dev/null | head -n 60 || echo "no error lines found"
+  grep -nE "^e: |^w: .*error|error: |What went wrong|Execution failed for task|> Task .* FAILED|FAILURE:" /tmp/assemble.log 2>/dev/null | head -n 80 || echo "no error lines found"
+  echo "---- context around first error ----"
+  first=$(grep -nE "^e: " /tmp/assemble.log 2>/dev/null | head -1 | cut -d: -f1)
+  if [ -n "${first:-}" ]; then
+    start=$((first))
+    end=$((first+8))
+    sed -n "${start},${end}p" /tmp/assemble.log
+  fi
   echo '```'
   echo
 
