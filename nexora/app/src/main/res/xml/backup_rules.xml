@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="database" path="nexora.db" />
+    <include domain="sharedpref" path="nexora_interface.preferences_pb" />
+    <exclude domain="sharedpref" path="nexora_alarm_occurrences.xml" />
+</full-backup-content>

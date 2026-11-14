@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NEXORA</string>
+    <string name="app_tagline">Personal time operating system</string>
+    <string name="alarm_channel_name">Alarms</string>
+    <string name="widget_label">NEXORA clock</string>
+    <string name="widget_description">Live NEXORA clock and next alarm.</string>
+    <string name="permission_notifications_rationale">NEXORA needs notification access so alarms can ring and show a dismiss action on the lock screen.</string>
+    <string name="permission_exact_rationale">Exact alarm access lets NEXORA ring at the precise minute you chose. Without it, Android may delay alarms.</string>
+    <string name="permission_calendar_rationale">Calendar access is optional. NEXORA reads today\'s events locally to build your agenda; nothing is uploaded.</string>
+</resources>

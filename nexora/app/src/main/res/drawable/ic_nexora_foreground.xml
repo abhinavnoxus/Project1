@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- NEXORA mark: a liquid orb cut by a horizon line and an orbital arc. -->
+    <path
+        android:pathData="M54,28 a26,26 0 1,1 -0.01,0"
+        android:strokeColor="#7FE3FF"
+        android:strokeWidth="2.2"
+        android:strokeAlpha="0.85"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M28,54 L80,54"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,38 L54,70"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M36,36 C46,46 62,62 72,72"
+        android:strokeColor="#9A7BFF"
+        android:strokeWidth="1.8"
+        android:strokeAlpha="0.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+</vector>

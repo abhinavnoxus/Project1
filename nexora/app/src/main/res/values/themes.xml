@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Nexora" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/nexora_window</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <style name="Theme.Nexora.Splash" parent="Theme.Nexora">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
+</resources>

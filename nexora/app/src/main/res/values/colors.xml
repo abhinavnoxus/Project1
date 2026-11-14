@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="nexora_window">#05070C</color>
+    <color name="nexora_icon_bg">#0B1220</color>
+    <color name="nexora_icon_tint">#7FE3FF</color>
+</resources>
