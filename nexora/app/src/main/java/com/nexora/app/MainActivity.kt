@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val profileSet by viewModel.profiles.collectAsStateWithLifecycle()
             val quality by viewModel.effectiveQuality.collectAsStateWithLifecycle()
-            val reducedMotion by viewModel.reducedMotion.collectAsStateWithLifecycle()
+            val reducedMotion by viewModel.reducedMotionFlow.collectAsStateWithLifecycle()
             val spec: GlassSpec = profileSet.spec(reducedMotion)
 
             CompositionLocalProvider(
@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
             }
             ACTION_OPEN_REMINDER ->
                 pendingTaskId = intent.getLongExtra(EXTRA_TASK_ID, -1L).takeIf { it > 0L }
-            ACTION_OPEN_ALARMS, ACTION_SHOW_ALARM, android.provider.Settings.ACTION_SET_ALARM, "android.intent.action.SHOW_ALARMS" ->
+            ACTION_OPEN_ALARMS, ACTION_SHOW_ALARM, ACTION_SET_ALARM, ACTION_SHOW_ALARMS ->
                 pendingRoute = "alarms"
             else -> Unit
         }
@@ -123,5 +123,9 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_ALARM_ID = "alarm_id"
         const val EXTRA_TRIGGER_AT = "trigger_at"
         const val EXTRA_TASK_ID = "task_id"
+
+        /** Platform actions NEXORA answers to (declared in the manifest). */
+        const val ACTION_SET_ALARM = "android.intent.action.SET_ALARM"
+        const val ACTION_SHOW_ALARMS = "android.intent.action.SHOW_ALARMS"
     }
 }

@@ -244,10 +244,14 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun alarmHealth(): AlarmHealth {
+        val next = runCatching { kotlinx.coroutines.runBlocking { scheduler.nextAlarmMillis() } }.getOrNull()
+        return alarmHealthWith(next)
+    }
+
+    private fun alarmHealthWith(next: Long?): AlarmHealth {
         val notifications = com.nexora.app.alarm.NotificationHelper.canPost(context)
         val channel = com.nexora.app.alarm.NotificationHelper.areChannelsEnabled(context)
         val exact = scheduler.canScheduleExact()
-        val next = scheduler.nextAlarmMillis()
         val list = alarms.value
         val badRingtone = list.firstOrNull { !scheduler.ringtoneAvailable(it.ringtoneUri) }
         return AlarmHealth(
