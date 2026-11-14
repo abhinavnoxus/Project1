@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -119,10 +118,11 @@ fun blurSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 fun Modifier.staticBlur(radiusDp: Float, spec: GlassSpec = NexoraTheme.spec): Modifier {
     if (!blurSupported() || radiusDp <= 0.5f || spec.reducedOrOff) return this
     val radiusPx = with(LocalDensity.current) { radiusDp.dp.toPx() }
+    // Compose's BlurEffect is already a Compose RenderEffect; assign it directly.
     val effect = androidx.compose.ui.graphics.BlurEffect(
         radiusX = radiusPx,
         radiusY = radiusPx,
         edgeTreatment = androidx.compose.ui.graphics.TileMode.Clamp,
-    ).asComposeRenderEffect()
+    )
     return this.graphicsLayer { renderEffect = effect }
 }
