@@ -1,14 +1,32 @@
 name: probe
 on: [push, workflow_dispatch]
+permissions:
+  contents: write
+  issues: write
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          java -version
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls $ANDROID_HOME/ 2>/dev/null
-          ls $ANDROID_HOME/platforms 2>/dev/null
-          ls $ANDROID_HOME/build-tools 2>/dev/null
+      - name: gather
+        run: |
+          {
+            echo '### Toolchain probe'
+            echo '```'
+            java -version 2>&1
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+            echo "--- platforms ---"; ls "$ANDROID_HOME/platforms" 2>/dev/null
+            echo "--- build-tools ---"; ls "$ANDROID_HOME/build-tools" 2>/dev/null
+            echo "--- cmdline-tools ---"; ls "$ANDROID_HOME/cmdline-tools" 2>/dev/null
+            echo "--- ndk ---"; ls "$ANDROID_HOME/ndk" 2>/dev/null
+            echo "--- gradle ---"; gradle -v 2>/dev/null | head -5
+            echo "--- disk ---"; df -h / | tail -1
+            echo '```'
+          } > probe.md
+          cat probe.md
+      - name: report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue create --title "CI toolchain probe" --body-file probe.md || true
