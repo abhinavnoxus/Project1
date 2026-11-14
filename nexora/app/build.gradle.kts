@@ -70,6 +70,7 @@ android {
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
     }
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
@@ -121,5 +122,6 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

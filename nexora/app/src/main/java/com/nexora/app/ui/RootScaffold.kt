@@ -184,12 +184,11 @@ fun RootScaffold(
     }
 
     // Fire due timers exactly once, with a notification-backed alert.
-    LaunchedEffect(tick, timers.size) {
-        val due = timers.filter { it.remaining(tick) <= 0L && it.pausedAt == null }
-        due.forEach { finished ->
-            timers.remove(finished)
+    LaunchedEffect(tick) {
+        viewModel.collectFinishedTimers(tick).forEach { finished ->
             com.nexora.app.notify.NotificationHelper.postReminder(
-                context, finished.id, "Timer finished", "${finished.label} · ${finished.durationMillis / 60_000} min",
+                context, finished.id, "Timer finished",
+                "${finished.label} · ${finished.durationMillis / 60_000} min",
             )
             snack = "Timer finished: ${finished.label}"
         }
