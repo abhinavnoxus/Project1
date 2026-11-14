@@ -8,31 +8,28 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 
 /**
  * Ambient backdrop behind the glass stack.
  *
- * Motion policy: the drifting orbs animate **only** when the interface is visible and
- * motion is enabled. When motion is off (or the user picks Efficient Glass) the backdrop
- * is a single static gradient — zero frame cost. We never loop animations when nothing
- * is on screen, and never animate a full-screen blur.
+ * Motion policy: the drifting orbs animate **only** when motion is enabled and the
+ * quality tier can afford it. With motion off (or Efficient Glass) the backdrop is one
+ * static gradient — zero per-frame cost. There is no full-screen continually-redrawn
+ * blur anywhere in NEXORA: the glass panes draw their own refraction, which is orders of
+ * magnitude cheaper than sampling the backdrop every frame.
  */
 @Composable
 fun NexoraBackdrop(
@@ -58,12 +55,12 @@ fun NexoraBackdrop(
             ),
             label = "phase",
         ).value
-    } else 0f
+    } else {
+        0f
+    }
 
     Box(Modifier.fillMaxSize()) {
-        Canvas(Modifier.fillMaxSize()) {
-            drawAmbient(backdrop, spec, phase, drift)
-        }
+        Canvas(Modifier.fillMaxSize()) { drawAmbient(backdrop, spec, phase, drift) }
         content()
     }
 }
@@ -83,58 +80,49 @@ private fun DrawScope.drawAmbient(
             end = Offset(w * 0.6f, h),
         ),
     )
-
     if (!drift) return
 
     val accent = spec.accentColor
     val secondary = spec.accent.secondary
+    val tertiary = spec.accent.tertiary
     val sway = (phase - 0.5f) * 0.16f
 
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(accent.copy(alpha = 0.30f), Color.Transparent),
-            center = Offset(w * (0.28f + sway), h * 0.22f),
-            radius = w * 0.72f,
-        ),
-        radius = w * 0.72f,
-        center = Offset(w * (0.28f + sway), h * 0.22f),
+    val orbs = listOf(
+        Triple(Offset(w * (0.28f + sway), h * 0.22f), w * 0.72f, accent.copy(alpha = 0.30f)),
+        Triple(Offset(w * (0.78f - sway), h * 0.62f), w * 0.62f, secondary.copy(alpha = 0.24f)),
+        Triple(Offset(w * (0.5f + sway * 0.6f), h * 0.92f), w * 0.5f, tertiary.copy(alpha = 0.14f)),
     )
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(secondary.copy(alpha = 0.24f), Color.Transparent),
-            center = Offset(w * (0.78f - sway), h * 0.62f),
-            radius = w * 0.62f,
-        ),
-        radius = w * 0.62f,
-        center = Offset(w * (0.78f - sway), h * 0.62f),
-    )
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(spec.accent.tertiary.copy(alpha = 0.14f), Color.Transparent),
-            center = Offset(w * (0.5f + sway * 0.6f), h * 0.92f),
-            radius = w * 0.5f,
-        ),
-        radius = w * 0.5f,
-        center = Offset(w * (0.5f + sway * 0.6f), h * 0.92f),
-    )
+    orbs.forEach { (center, radius, color) ->
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(color, Color.Transparent),
+                center = center,
+                radius = radius,
+            ),
+            radius = radius,
+            center = center,
+        )
+    }
 }
 
-/**
- * Backdrop blur for sheets and dialogs only.
- *
- * A full-screen continuously-redrawn blur is exactly the thing that makes mid-range
- * phones drop frames. So: one static scrim layer, blurred once per composition when the
- * device supports it (API 31+), and a plain translucent scrim otherwise.
- */
-@Composable
+/** True when this platform can blur a layer at all (API 31+). */
 fun blurSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
+/**
+ * One-shot blur for sheets and dialogs.
+ *
+ * Applied to a sheet's own *already-rendered* content, never to a live backdrop, and
+ * skipped entirely on pre-API-31 devices where it degrades to the translucent scrim the
+ * caller draws underneath.
+ */
 @Composable
 fun Modifier.staticBlur(radiusDp: Float, spec: GlassSpec = NexoraTheme.spec): Modifier {
     if (!blurSupported() || radiusDp <= 0.5f || spec.reducedOrOff) return this
     val radiusPx = with(LocalDensity.current) { radiusDp.dp.toPx() }
-    val effect = remember(radiusPx) {
-        androidx.compose.ui.graphics.BlurEffect(radiusPx, radiusPx, TileMode.Clamp).asComposeRenderEffect()
-    }
+    val effect = androidx.compose.ui.graphics.BlurEffect(
+        radiusX = radiusPx,
+        radiusY = radiusPx,
+        edgeTreatment = androidx.compose.ui.graphics.TileMode.Clamp,
+    ).asComposeRenderEffect()
     return this.graphicsLayer { renderEffect = effect }
 }
