@@ -181,7 +181,12 @@ fun SettingsRow(
 }
 
 @Composable
-fun NexoraSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
+fun NexoraSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    @Suppress("UNUSED_PARAMETER") modifier: Modifier = Modifier,
+) {
     val spec = NexoraTheme.spec
     Switch(
         checked = checked,

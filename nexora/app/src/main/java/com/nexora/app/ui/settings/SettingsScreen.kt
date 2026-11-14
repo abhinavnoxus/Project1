@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -226,8 +227,7 @@ fun PrivacyScreen(spec: GlassSpec) {
                     ).forEach { line ->
                         Row {
                             Text("•", color = spec.accentColor)
-                            Spacer(Modifier.height(0.dp))
-                            androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(line, style = MaterialTheme.typography.bodySmall, color = spec.secondaryTextColor)
                         }
                     }
@@ -236,6 +236,3 @@ fun PrivacyScreen(spec: GlassSpec) {
         }
     }
 }
-
-@Composable
-private fun Spacer(modifier: Modifier) = androidx.compose.foundation.layout.Spacer(modifier)

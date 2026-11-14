@@ -204,7 +204,7 @@ fun AlarmEditorScreen(
     onDelete: ((Long) -> Unit)?,
     onBack: () -> Unit,
     onPickRingtone: () -> Unit,
-    previewRingtones: List<Pair<String, String>>,
+    previewRingtones: List<Pair<String?, String>>,
 ) {
     var alarm by remember(existing) {
         mutableStateOf(existing ?: Alarm(hour = 7, minute = 0, repeat = WeekdayMask.EveryDay, label = "Alarm"))

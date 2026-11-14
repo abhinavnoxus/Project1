@@ -244,8 +244,9 @@ fun StudioScreen(
                     GlassPanel(title = "Home sections", subtitle = "Reorder what the command centre shows") {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val order = active?.layout?.homeSections ?: LayoutConfig().homeSections
-                            order.forEachIndexed { index, id ->
-                                val section = HomeSection.fromId(id) ?: return@forEachIndexed
+                            for (index in order.indices) {
+                                val id = order[index]
+                                val section = HomeSection.fromId(id) ?: continue
                                 Row(
                                     Modifier.fillMaxWidth()
                                         .clip(RoundedCornerShape(12.dp))

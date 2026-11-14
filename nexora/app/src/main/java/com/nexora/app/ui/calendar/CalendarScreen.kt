@@ -425,7 +425,9 @@ fun WorldClockScreen(
 }
 
 @Composable
-private fun ZonePill(label: String, zoneId: String, spec: GlassSpec, onChange: (String) -> Unit) {
+private fun androidx.compose.foundation.layout.RowScope.ZonePill(
+    label: String, zoneId: String, spec: GlassSpec, onChange: (String) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Column(Modifier.weight(1f)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = spec.secondaryTextColor)
