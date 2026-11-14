@@ -15,6 +15,13 @@ OUT="${5:-/tmp/report.md}"
   echo "| assembleRelease | $R |"
   echo
 
+  echo "### Build errors"
+  echo
+  echo '```'
+  grep -nE "^e: |^w: .*error|error: |What went wrong|Execution failed for task|Caused by:|> Task .* FAILED|Unresolved reference|FAILURE:" /tmp/assemble.log 2>/dev/null | head -n 60 || echo "no error lines found"
+  echo '```'
+  echo
+
   echo "### Unit test summary"
   if ls app/build/test-results/testDebugUnitTest/*.xml >/dev/null 2>&1; then
     python3 scripts/ci-summarise-tests.py
