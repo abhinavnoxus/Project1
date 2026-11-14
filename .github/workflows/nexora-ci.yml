@@ -36,14 +36,14 @@ jobs:
         with:
           cache-read-only: false
 
-      - name: Ensure Gradle wrapper
+      - name: Prepare Gradle wrapper
         run: |
-          if [ ! -x ./gradlew ]; then
-            mkdir -p /tmp/wrapgen && cd /tmp/wrapgen
+          chmod +x ./gradlew
+          if ! ./gradlew --version; then
+            echo "committed wrapper failed; regenerating with the runner's Gradle"
             gradle wrapper --gradle-version 8.9 --distribution-type bin --no-daemon
-            cp -r gradle gradlew gradlew.bat "$GITHUB_WORKSPACE/nexora/"
+            ./gradlew --version
           fi
-          ./gradlew --version
 
       - name: Assemble debug
         id: assemble
