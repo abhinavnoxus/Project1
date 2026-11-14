@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.nexora.app.NexoraApplication
 import com.nexora.app.alarm.AlarmScheduler
 import com.nexora.app.data.NexoraDatabase
+import com.nexora.app.notify.NotificationHelper
 import com.nexora.app.data.repo.AlarmRepository
 import com.nexora.app.data.repo.FocusRepository
 import com.nexora.app.data.repo.RoutineRepository
@@ -249,8 +250,8 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun alarmHealthWith(next: Long?): AlarmHealth {
-        val notifications = com.nexora.app.alarm.NotificationHelper.canPost(context)
-        val channel = com.nexora.app.alarm.NotificationHelper.areChannelsEnabled(context)
+        val notifications = com.nexora.app.notify.NotificationHelper.canPost(context)
+        val channel = com.nexora.app.notify.NotificationHelper.areChannelsEnabled(context)
         val exact = scheduler.canScheduleExact()
         val list = alarms.value
         val badRingtone = list.firstOrNull { !scheduler.ringtoneAvailable(it.ringtoneUri) }

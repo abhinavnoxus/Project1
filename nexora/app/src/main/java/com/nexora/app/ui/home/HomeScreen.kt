@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Bolt
@@ -106,6 +107,7 @@ fun HomeScreen(
     onAddTask: () -> Unit,
     onOpenRoutines: () -> Unit,
     onOpenReminders: () -> Unit,
+    onOpenBriefing: () -> Unit = {},
 ) {
     val entrance = rememberEntrance(spec, 500)
     val progress = entrance.value
@@ -139,7 +141,7 @@ fun HomeScreen(
                     HomeSection.Focus -> FocusPanel(focusActive, focusLabel, focusElapsedMinutes, todayFocusMinutes, spec, onStartFocus, onOpenFocus)
                     HomeSection.Routines -> RoutinesPanel(routines, completedRoutineIds, spec, onCompleteRoutine, onOpenRoutines)
                     HomeSection.Reminders -> RemindersPanel(reminders, spec, onToggleTask, onOpenReminders)
-                    HomeSection.QuickActions -> QuickActions(spec, onOpenAlarms, onOpenTimer, onStartFocus, onOpenCalendar, onOpenInsights)
+                    HomeSection.QuickActions -> QuickActions(spec, onOpenAlarms, onOpenTimer, onStartFocus, onOpenCalendar, onOpenInsights, onOpenBriefing)
                     HomeSection.InsightStrip -> InsightStrip(todayFocusMinutes, priorities, todayEvents, spec, onOpenInsights)
                 }
             }
@@ -597,6 +599,7 @@ private fun QuickActions(
     onStartFocus: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenInsights: () -> Unit,
+    onOpenBriefing: () -> Unit,
 ) {
     val actions = listOf(
         Triple("Alarm", Icons.Rounded.Alarm, onOpenAlarms),
@@ -604,6 +607,7 @@ private fun QuickActions(
         Triple("Focus", Icons.Rounded.PlayArrow, onStartFocus),
         Triple("Agenda", Icons.Rounded.CalendarMonth, onOpenCalendar),
         Triple("Insights", Icons.Rounded.Bolt, onOpenInsights),
+        Triple("Briefing", Icons.Rounded.AutoAwesome, onOpenBriefing),
     )
     Column {
         SectionHeader("Quick actions")

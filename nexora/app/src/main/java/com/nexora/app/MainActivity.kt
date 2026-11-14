@@ -1,5 +1,7 @@
 package com.nexora.app
 
+import com.nexora.app.notify.NotificationHelper
+
 import android.Manifest
 import android.content.Intent
 import android.os.Build
@@ -16,7 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.nexora.app.alarm.NotificationHelper
+import com.nexora.app.notify.NotificationHelper
 import com.nexora.app.design.GlassSpec
 import com.nexora.app.design.LocalGlassQuality
 import com.nexora.app.design.LocalGlassSpec

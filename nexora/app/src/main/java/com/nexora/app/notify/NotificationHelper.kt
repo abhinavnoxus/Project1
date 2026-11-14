@@ -1,4 +1,4 @@
-package com.nexora.app.alarm
+package com.nexora.app.notify
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.nexora.app.MainActivity
+import com.nexora.app.alarm.AlarmReceiver
 import com.nexora.app.R
 
 /**

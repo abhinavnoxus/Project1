@@ -1,5 +1,7 @@
 package com.nexora.app.ui.settings
 
+import com.nexora.app.notify.NotificationHelper
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -152,7 +154,7 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     "Notification settings",
-                    subtitle = if (com.nexora.app.alarm.NotificationHelper.canPost(androidx.compose.ui.platform.LocalContext.current)) "Enabled" else "Disabled — alarms cannot notify",
+                    subtitle = if (com.nexora.app.notify.NotificationHelper.canPost(androidx.compose.ui.platform.LocalContext.current)) "Enabled" else "Disabled — alarms cannot notify",
                     onClick = onRequestNotifications,
                 )
                 SettingsRow(

@@ -1,5 +1,7 @@
 package com.nexora.app.ui
 
+import com.nexora.app.notify.NotificationHelper
+
 import android.Manifest
 import android.content.Intent
 import android.provider.AlarmClock
@@ -33,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Insights
@@ -100,6 +103,7 @@ enum class Destination(val label: String, val icon: ImageVector) {
     Time("Time", Icons.Rounded.Timer),
     Agenda("Agenda", Icons.Rounded.CalendarMonth),
     Insights("Insights", Icons.Rounded.Insights),
+    Briefing("Briefing", Icons.Rounded.AutoAwesome),
 }
 
 /** Pushed (non-tab) screens. */
@@ -112,6 +116,7 @@ private sealed interface Overlay {
     data object Stopwatch : Overlay
     data object Focus : Overlay
     data object Routines : Overlay
+    data object Briefing : Overlay
     data class AlarmEditor(val alarm: Alarm?) : Overlay
     data class Ringing(val alarmId: Long, val triggerAt: Long) : Overlay
 }
@@ -178,7 +183,7 @@ fun RootScaffold(
         val due = timers.filter { it.remaining(tick) <= 0L && it.pausedAt == null }
         due.forEach { finished ->
             timers.remove(finished)
-            com.nexora.app.alarm.NotificationHelper.postReminder(
+            com.nexora.app.notify.NotificationHelper.postReminder(
                 context, finished.id, "Timer finished", "${finished.label} · ${finished.durationMillis / 60_000} min",
             )
             snack = "Timer finished: ${finished.label}"
@@ -275,6 +280,7 @@ fun RootScaffold(
                                     onOpenInsights = { destination = Destination.Insights },
                                     onAddTask = { showAddTask = true },
                                     onOpenRoutines = { overlay = Overlay.Routines },
+                                    onOpenBriefing = { destination = Destination.Briefing },
                                     onOpenReminders = { destination = Destination.Agenda },
                                 )
 
@@ -336,6 +342,22 @@ fun RootScaffold(
                                     onAddTask = { showAddTask = true },
                                     onToggleTask = viewModel::setTaskDone,
                                     onOpenPlanner = { overlay = Overlay.WorldClocks },
+                                )
+
+                                Destination.Briefing -> com.nexora.app.ui.ai.BriefingScreen(
+                                    briefing = com.nexora.app.domain.ai.Briefing.dailyBriefing(
+                                        date = today,
+                                        nowMillis = tick,
+                                        events = calendarEvents,
+                                        alarms = alarms,
+                                        priorities = priorities,
+                                        reminders = tasks,
+                                        routines = routines,
+                                        completedRoutines = routineLogs,
+                                        focusMinutesToday = todayFocusMinutes,
+                                    ),
+                                    spec = spec,
+                                    onWriteOwn = { showAddTask = true },
                                 )
 
                                 Destination.Insights -> InsightsScreen(
@@ -469,6 +491,22 @@ fun RootScaffold(
                                 destination = Destination.Time
                                 overlay = null
                             },
+                        )
+
+                        Overlay.Briefing -> com.nexora.app.ui.ai.BriefingScreen(
+                            briefing = com.nexora.app.domain.ai.Briefing.dailyBriefing(
+                                date = today,
+                                nowMillis = tick,
+                                events = calendarEvents,
+                                alarms = alarms,
+                                priorities = priorities,
+                                reminders = tasks,
+                                routines = routines,
+                                completedRoutines = routineLogs,
+                                focusMinutesToday = todayFocusMinutes,
+                            ),
+                            spec = spec,
+                            onWriteOwn = { showAddTask = true },
                         )
 
                         Overlay.Routines -> RoutinesScreen(
@@ -628,7 +666,7 @@ private fun FloatingNav(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Destination.entries.forEach { destination ->
+            Destination.entries.filter { it != Destination.Briefing }.forEach { destination ->
                 val selected = destination == current
                 Column(
                     Modifier
