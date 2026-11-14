@@ -89,10 +89,17 @@ fun GlassSurface(
 
 private fun paddingModifier(padding: Dp) = Modifier.layout { measurable, constraints ->
     val pad = padding.roundToPx()
-    val placeable = measurable.measure(
-        constraints.offset(-pad * 2, -pad * 2).copy(minWidth = 0, minHeight = 0)
+    val inner = androidx.compose.ui.unit.Constraints(
+        minWidth = 0,
+        minHeight = 0,
+        maxWidth = (constraints.maxWidth - pad * 2).coerceAtLeast(0),
+        maxHeight = if (constraints.hasBoundedHeight) (constraints.maxHeight - pad * 2).coerceAtLeast(0) else Int.MAX_VALUE,
     )
-    layout(placeable.width + pad * 2, placeable.height + pad * 2) {
+    val placeable = measurable.measure(inner)
+    layout(
+        (placeable.width + pad * 2).coerceAtMost(constraints.maxWidth),
+        (placeable.height + pad * 2).coerceAtMost(if (constraints.hasBoundedHeight) constraints.maxHeight else Int.MAX_VALUE),
+    ) {
         placeable.place(pad, pad)
     }
 }
@@ -243,7 +250,7 @@ enum class GlassTier { Efficient, Balanced, Ultra, Shader }
 @Composable
 fun rememberRefractionShader(spec: GlassSpec, phase: Float): RefractionHandle {
     val quality = NexoraTheme.quality
-    var handle by remember(spec.material, quality) { mutableStateOf(RefractionHandle.None) }
+    var handle by remember(spec.material, quality) { mutableStateOf<RefractionHandle>(RefractionHandle.None) }
 
     LaunchedEffect(spec.material, quality, phase) {
         handle = if (quality == GlassQuality.Ultra && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -289,5 +296,5 @@ internal fun specularBitmap(width: Int, height: Int, color: Int): BitmapShader {
     val bitmap = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
     val paint = Paint().apply { this.color = color }
     android.graphics.Canvas(bitmap).drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-    return BitmapShader(bitmap, BitmapShader.TileMode.CLAMP, BitmapShader.TileMode.CLAMP)
+    return BitmapShader(bitmap, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
 }

@@ -99,7 +99,7 @@ class AlarmScheduler(private val context: Context) : AlarmSchedulerPort {
         true
     }
 
-    fun nextAlarmMillis(): Long? = alarmManager?.nextAlarmClock?.triggerTime
+    override suspend fun nextAlarmMillis(): Long? = alarmManager?.nextAlarmClock?.triggerTime
 
     private fun firingIntent(alarm: Alarm, triggerAt: Long): PendingIntent {
         val requestCode = AlarmMath.requestCode(alarm.id, triggerAt)

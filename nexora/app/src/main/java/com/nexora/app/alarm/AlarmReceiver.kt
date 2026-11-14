@@ -96,7 +96,7 @@ class BootReceiver : BroadcastReceiver() {
 /** Android 13+ requires the notification permission; we react by telling the user. */
 class PermissionStateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) {
+        if (intent.action == android.app.AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) {
             val pending = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -106,9 +106,5 @@ class PermissionStateReceiver : BroadcastReceiver() {
                 }
             }
         }
-    }
-
-    private companion object {
-        val AlarmManager = android.app.AlarmManager::class.java
     }
 }

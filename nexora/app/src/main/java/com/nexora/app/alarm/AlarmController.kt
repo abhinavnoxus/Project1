@@ -8,12 +8,14 @@ import androidx.core.content.ContextCompat
 import com.nexora.app.data.NexoraDatabase
 import com.nexora.app.data.repo.AlarmRepository
 import com.nexora.app.data.repo.toDomain
+import com.nexora.app.data.repo.toEntity
 import com.nexora.app.domain.alarm.AlarmInstance
 import com.nexora.app.domain.alarm.AlarmMath
 import com.nexora.app.domain.alarm.AlarmPhase
 import com.nexora.app.domain.alarm.AlarmStateMachine
 import com.nexora.app.domain.alarm.AlarmTransition
 import com.nexora.app.domain.model.Alarm
+import com.nexora.app.domain.model.AlarmKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -135,7 +137,7 @@ object AlarmController {
                     val alarm = repo.get(alarmId)
                     if (alarm != null) {
                         when (alarm.kind) {
-                            com.nexora.app.domain.model.AlarmKind.OneShot ->
+                            AlarmKind.OneShot ->
                                 repo.setEnabled(alarmId, false)
                             else -> {
                                 // Drop any leftover occurrence record for this instant,

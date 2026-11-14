@@ -11,36 +11,45 @@ import com.nexora.app.data.repo.AlarmRepository
 import com.nexora.app.data.repo.FocusRepository
 import com.nexora.app.data.repo.RoutineRepository
 import com.nexora.app.data.repo.TaskRepository
-import com.nexora.app.data.repo.toDomain
 import com.nexora.app.design.GlassQuality
+import com.nexora.app.design.GlassSpecData
 import com.nexora.app.design.InterfaceProfile
 import com.nexora.app.design.InterfaceRepository
+import com.nexora.app.design.LayoutConfig
 import com.nexora.app.design.ProfileSet
+import com.nexora.app.domain.alarm.AlarmMath
 import com.nexora.app.domain.model.Alarm
 import com.nexora.app.domain.model.FocusSession
 import com.nexora.app.domain.model.Routine
 import com.nexora.app.domain.model.ScheduleEvent
 import com.nexora.app.domain.model.Task
+import com.nexora.app.domain.model.TaskKind
+import com.nexora.app.platform.CalendarBridge
 import com.nexora.app.platform.DeviceProfile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 /**
  * Single app-scoped state holder.
  *
- * Kept intentionally as one ViewModel rather than one per screen: NEXORA's screens share
- * a great deal of state (alarms feed the home, the alarm screen and the health centre),
- * and a single owner avoids duplicate observation of the database. Screens read narrow
- * derived flows so recomposition still stays local.
+ * One ViewModel rather than one per screen: NEXORA's screens share a great deal of state
+ * (an alarm feeds the home, the alarm list and the health centre), and a single owner
+ * avoids observing the database several times. Screens read narrow derived flows, so
+ * recomposition still stays local.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class NexoraViewModel(app: Application) : AndroidViewModel(app) {
 
     private val context: Context get() = getApplication<Application>()
@@ -56,32 +65,31 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
     private val focusRepo = FocusRepository(db)
     private val interfaceRepo = InterfaceRepository(app)
 
-    // ---- interface --------------------------------------------------------------
+    // ---------------------------------------------------------------- interface
 
     val profiles: StateFlow<ProfileSet> = interfaceRepo.profileSet
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileSet())
 
-    private val _qualityOverride = MutableStateFlow<GlassQuality?>(null)
-    val effectiveQuality: StateFlow<GlassQuality> = combine(profiles, _qualityOverride) { set, override ->
-        override ?: set.qualityOverride ?: device.recommendedQuality()
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, device.recommendedQuality())
+    private val qualityOverride = MutableStateFlow<GlassQuality?>(null)
 
-    private val _reducedMotion = MutableStateFlow(false)
-    val reducedMotion: StateFlow<Boolean> = _reducedMotion.asStateFlow()
+    val effectiveQuality: StateFlow<GlassQuality> =
+        combine(profiles, qualityOverride) { set, override ->
+            override ?: set.qualityOverride ?: device.recommendedQuality()
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, device.recommendedQuality())
 
-    fun setReducedMotion(value: Boolean) {
-        _reducedMotion.value = value
-    }
+    private val reducedMotion = MutableStateFlow(false)
+    val reducedMotionFlow: StateFlow<Boolean> = reducedMotion.asStateFlow()
 
-    fun updateSpec(transform: (com.nexora.app.design.GlassSpecData) -> com.nexora.app.design.GlassSpecData) {
+    fun setReducedMotion(value: Boolean) { reducedMotion.value = value }
+
+    fun updateSpec(transform: (GlassSpecData) -> GlassSpecData) {
         viewModelScope.launch {
-            val set = profiles.value
-            val active = set.active ?: return@launch
+            val active = profiles.value.active ?: return@launch
             interfaceRepo.saveProfile(active.copy(spec = transform(active.spec)))
         }
     }
 
-    fun updateLayout(transform: (com.nexora.app.design.LayoutConfig) -> com.nexora.app.design.LayoutConfig) {
+    fun updateLayout(transform: (LayoutConfig) -> LayoutConfig) {
         viewModelScope.launch {
             val active = profiles.value.active ?: return@launch
             interfaceRepo.saveProfile(active.copy(layout = transform(active.layout)))
@@ -98,7 +106,7 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
     fun resetInterface() = viewModelScope.launch { interfaceRepo.resetToDefault() }
 
     fun setQualityOverride(quality: GlassQuality?) {
-        _qualityOverride.value = quality
+        qualityOverride.value = quality
         viewModelScope.launch { interfaceRepo.setQualityOverride(quality) }
     }
 
@@ -108,21 +116,31 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setOnboarded() = viewModelScope.launch { interfaceRepo.setOnboarded(true) }
 
-    /** Called once on first launch so the welcome sheet is shown exactly once. */
-    suspend fun ensureOnboardedState(): Boolean = interfaceRepo.current().onboarded
+    suspend fun isOnboarded(): Boolean = interfaceRepo.current().onboarded
 
-    // ---- alarms -----------------------------------------------------------------
+    // ------------------------------------------------------------------ alarms
 
     val alarms: StateFlow<List<Alarm>> = alarmRepo.observeAlarms()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val nextAlarm: StateFlow<Alarm?> = alarms
-        .combine(kotlinx.coroutines.flow.flow { while (true) { emit(System.currentTimeMillis()); kotlinx.coroutines.delay(30_000) } }) { list, now ->
-            list.filter { it.enabled }
-                .mapNotNull { a -> com.nexora.app.domain.alarm.AlarmMath.nextTrigger(a, now)?.let { a to it } }
-                .minByOrNull { it.second }?.first
+    /** Ticks once a minute; used for countdowns and the live clock. */
+    private val minuteTicker = flow {
+        while (true) {
+            emit(System.currentTimeMillis())
+            delay(1_000)
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    }
+
+    val now: StateFlow<Long> = minuteTicker
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), System.currentTimeMillis())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val nextAlarm: StateFlow<Alarm?> = combine(alarms, now) { list, current ->
+        list.filter { it.enabled }
+            .mapNotNull { alarm -> AlarmMath.nextTrigger(alarm, current)?.let { alarm to it } }
+            .minByOrNull { it.second }
+            ?.first
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun saveAlarm(alarm: Alarm) = viewModelScope.launch(Dispatchers.IO) { alarmRepo.save(alarm) }
 
@@ -131,18 +149,13 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleAlarm(id: Long, enabled: Boolean) =
         viewModelScope.launch(Dispatchers.IO) { alarmRepo.setEnabled(id, enabled) }
 
-    // ---- tasks ------------------------------------------------------------------
+    // ------------------------------------------------------------------- tasks
 
     val tasks: StateFlow<List<Task>> = taskRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val priorities: StateFlow<List<Task>> = tasks
-        .let { flow ->
-            kotlinx.coroutines.flow.map(tasks) { list ->
-                list.filter { it.kind == com.nexora.app.domain.model.TaskKind.Priority && !it.done }
-                    .sortedByDescending { it.priority }
-            }
-        }
+        .map { list -> list.filter { it.kind == TaskKind.Priority && !it.done }.sortedByDescending { it.priority } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun saveTask(task: Task) = viewModelScope.launch(Dispatchers.IO) { taskRepo.save(task) }
@@ -152,97 +165,105 @@ class NexoraViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteTask(id: Long) = viewModelScope.launch(Dispatchers.IO) { taskRepo.delete(id) }
 
-    // ---- routines ---------------------------------------------------------------
+    // ---------------------------------------------------------------- routines
 
     val routines: StateFlow<List<Routine>> = routineRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _today = MutableStateFlow(LocalDate.now())
-    val today: StateFlow<LocalDate> = _today.asStateFlow()
+    private val todayState = MutableStateFlow(LocalDate.now())
+    val today: StateFlow<LocalDate> = todayState.asStateFlow()
 
-    val routineLogs: StateFlow<Set<Long>> = combine(_today, routines) { day, _ -> day }
-        .let { flow ->
-            kotlinx.coroutines.flow.flatMapLatestCompat(flow) { day -> routineRepo.observeLogs(day) }
-        }
+    val routineLogs: StateFlow<Set<Long>> = todayState
+        .flatMapLatest { day -> routineRepo.observeLogs(day) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    fun completeRoutine(id: Long) = viewModelScope.launch(Dispatchers.IO) {
-        routineRepo.markComplete(id, _today.value)
-    }
+    fun completeRoutine(id: Long) =
+        viewModelScope.launch(Dispatchers.IO) { routineRepo.markComplete(id, todayState.value) }
 
     fun saveRoutine(routine: Routine) = viewModelScope.launch(Dispatchers.IO) { routineRepo.save(routine) }
 
     fun deleteRoutine(id: Long) = viewModelScope.launch(Dispatchers.IO) { routineRepo.delete(id) }
 
-    // ---- focus ------------------------------------------------------------------
+    // ------------------------------------------------------------------- focus
 
-    val focusSessions: StateFlow<List<FocusSession>> = focusRepo.observeRecent(30)
+    val focusSessions: StateFlow<List<FocusSession>> = focusRepo.observeRecent(40)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _activeFocusId = MutableStateFlow<Long?>(null)
-    val activeFocusId: StateFlow<Long?> = _activeFocusId.asStateFlow()
+    private val activeFocusId = MutableStateFlow<Long?>(null)
+    val activeFocus: StateFlow<Long?> = activeFocusId.asStateFlow()
+
+    private val focusStartedAt = MutableStateFlow(0L)
+    val focusStart: StateFlow<Long> = focusStartedAt.asStateFlow()
 
     fun startFocus(minutes: Int, label: String) = viewModelScope.launch(Dispatchers.IO) {
         val id = focusRepo.start(minutes, label)
-        _activeFocusId.value = id
+        focusStartedAt.value = System.currentTimeMillis()
+        activeFocusId.value = id
     }
 
     fun endFocus(completed: Boolean) = viewModelScope.launch(Dispatchers.IO) {
-        _activeFocusId.value?.let { focusRepo.finish(it, completed, !completed) }
-        _activeFocusId.value = null
+        activeFocusId.value?.let { focusRepo.finish(it, completed, !completed) }
+        activeFocusId.value = null
+        focusStartedAt.value = 0L
     }
 
-    // ---- calendar (optional) ----------------------------------------------------
+    // ---------------------------------------------------------------- calendar
 
-    private val _calendarEvents = MutableStateFlow<List<ScheduleEvent>>(emptyList())
-    val calendarEvents: StateFlow<List<ScheduleEvent>> = _calendarEvents.asStateFlow()
+    private val calendarEventsState = MutableStateFlow<List<ScheduleEvent>>(emptyList())
+    val calendarEvents: StateFlow<List<ScheduleEvent>> = calendarEventsState.asStateFlow()
 
-    private val _calendarPermission = MutableStateFlow(false)
-    val calendarPermission: StateFlow<Boolean> = _calendarPermission.asStateFlow()
+    private val calendarPermissionState = MutableStateFlow(false)
+    val calendarPermission: StateFlow<Boolean> = calendarPermissionState.asStateFlow()
 
     fun setCalendarPermission(granted: Boolean) {
-        _calendarPermission.value = granted
+        calendarPermissionState.value = granted
         if (granted) refreshCalendar()
     }
 
     fun refreshCalendar() = viewModelScope.launch(Dispatchers.IO) {
-        if (!_calendarPermission.value) return@launch
-        val events = com.nexora.app.platform.CalendarBridge.todayEvents(context)
-        _calendarEvents.value = events
+        if (!calendarPermissionState.value && !CalendarBridge.hasPermission(context)) return@launch
+        calendarPermissionState.value = true
+        calendarEventsState.value = CalendarBridge.todayEvents(context, todayState.value)
     }
 
-    // ---- lifecycle --------------------------------------------------------------
+    // --------------------------------------------------------------- lifecycle
 
     fun onResume() {
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { alarmRepo.rescheduleAll() }
-        }
-        _today.value = LocalDate.now()
+        viewModelScope.launch(Dispatchers.IO) { runCatching { alarmRepo.rescheduleAll() } }
+        todayState.value = LocalDate.now()
+        calendarPermissionState.value = CalendarBridge.hasPermission(context)
         refreshCalendar()
     }
 
     fun reconcileAlarms() = viewModelScope.launch(Dispatchers.IO) {
-        withContext(Dispatchers.IO) { com.nexora.app.alarm.AlarmController.reconcileOnStartup(context) }
+        com.nexora.app.alarm.AlarmController.reconcileOnStartup(context)
     }
 
     fun restoreAlarms() = viewModelScope.launch(Dispatchers.IO) {
         com.nexora.app.alarm.AlarmController.restoreAll(context)
     }
 
-    /** Alarm Health snapshot, recomputed on demand. */
-    fun alarmHealth(): AlarmHealth = AlarmHealth(
-        notificationsEnabled = com.nexora.app.alarm.NotificationHelper.canPost(context),
-        channelEnabled = com.nexora.app.alarm.NotificationHelper.areChannelsEnabled(context),
-        exactAlarmsAllowed = scheduler.canScheduleExact(),
-        nextAlarmMillis = scheduler.nextAlarmMillis(),
-        enabledCount = alarms.value.count { it.enabled },
-        totalCount = alarms.value.size,
-        ringingCount = 0,
-        batteryOptimised = com.nexora.app.platform.PowerGuidance.isIgnoringBatteryOptimisations(context),
-        ringtoneIssue = alarms.value.firstOrNull { !scheduler.ringtoneAvailable(it.ringtoneUri) }?.label,
-        realmeUiDetected = device.isRealmeUi,
-        lastDismissLatencyMillis = com.nexora.app.alarm.AlarmHistory.lastDismissLatencyMillis,
-    )
+    fun alarmHealth(): AlarmHealth {
+        val notifications = com.nexora.app.alarm.NotificationHelper.canPost(context)
+        val channel = com.nexora.app.alarm.NotificationHelper.areChannelsEnabled(context)
+        val exact = scheduler.canScheduleExact()
+        val next = scheduler.nextAlarmMillis()
+        val list = alarms.value
+        val badRingtone = list.firstOrNull { !scheduler.ringtoneAvailable(it.ringtoneUri) }
+        return AlarmHealth(
+            notificationsEnabled = notifications,
+            channelEnabled = channel,
+            exactAlarmsAllowed = exact,
+            nextAlarmMillis = next,
+            enabledCount = list.count { it.enabled },
+            totalCount = list.size,
+            batteryOptimised = com.nexora.app.platform.PowerGuidance.isIgnoringBatteryOptimisations(context),
+            ringtoneIssue = badRingtone?.label,
+            realmeUiDetected = device.isRealmeUi,
+            lastDismissLatencyMillis = com.nexora.app.alarm.AlarmHistory.lastDismissLatencyMillis,
+            sdkInt = device.sdkInt,
+        )
+    }
 }
 
 data class AlarmHealth(
@@ -252,19 +273,12 @@ data class AlarmHealth(
     val nextAlarmMillis: Long?,
     val enabledCount: Int,
     val totalCount: Int,
-    val ringingCount: Int,
     val batteryOptimised: Boolean,
     val ringtoneIssue: String?,
     val realmeUiDetected: Boolean,
     val lastDismissLatencyMillis: Long,
+    val sdkInt: Int,
 ) {
     val allGood: Boolean
         get() = notificationsEnabled && channelEnabled && exactAlarmsAllowed && ringtoneIssue == null
 }
-
-/** `flatMapLatest` without importing ExperimentalCoroutinesApi everywhere. */
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-private fun <T, R> kotlinx.coroutines.flow.flatMapLatestCompat(
-    source: kotlinx.coroutines.flow.Flow<T>,
-    transform: (T) -> kotlinx.coroutines.flow.Flow<R>,
-): kotlinx.coroutines.flow.Flow<R> = kotlinx.coroutines.flow.flatMapLatest(source, transform)

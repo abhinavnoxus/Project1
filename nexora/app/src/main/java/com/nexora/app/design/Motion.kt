@@ -42,7 +42,7 @@ object NexoraMotion {
     fun <T> liquidSpec(spec: GlassSpec, baseMs: Int = 380): androidx.compose.animation.core.TweenSpec<T> =
         tween(durationMillis = spec.durationMillis(baseMs), easing = Liquid)
 
-    fun <T> panelSpring(spec: GlassSpec): androidx.compose.animation.core.SpringSpec<T> =
+    fun <T> panelSpring(spec: GlassSpec): androidx.compose.animation.core.FiniteAnimationSpec<T> =
         if (spec.reducedOrOff) {
             tween(0)
         } else {

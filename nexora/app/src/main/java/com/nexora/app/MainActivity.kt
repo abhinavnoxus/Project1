@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
             }
             ACTION_OPEN_REMINDER ->
                 pendingTaskId = intent.getLongExtra(EXTRA_TASK_ID, -1L).takeIf { it > 0L }
-            ACTION_OPEN_ALARMS, ACTION_SHOW_ALARM, Intent.ACTION_SET_ALARM, Intent.ACTION_SHOW_ALARMS ->
+            ACTION_OPEN_ALARMS, ACTION_SHOW_ALARM, android.provider.Settings.ACTION_SET_ALARM, "android.intent.action.SHOW_ALARMS" ->
                 pendingRoute = "alarms"
             else -> Unit
         }

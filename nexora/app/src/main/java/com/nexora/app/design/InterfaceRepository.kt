@@ -56,7 +56,7 @@ class InterfaceRepository(private val context: Context) {
         val custom = set.profiles.filterNot { p ->
             builtInProfiles().any { it.id == p.id } && p == builtInProfiles().first { it.id == p.id }
         }
-        this[profilesKey] = json.encodeToString(custom)
+        this[profilesKey] = json.encodeToString(kotlinx.serialization.builtins.ListSerializer(InterfaceProfile.serializer()), custom)
         this[activeIdKey] = set.activeId
         set.qualityOverride?.let { this[qualityKey] = it.id } ?: remove(qualityKey)
         this[onboardedKey] = set.onboarded
@@ -139,7 +139,7 @@ class InterfaceRepository(private val context: Context) {
     suspend fun exportActive(): String {
         val set = current()
         val active = set.active ?: return "[]"
-        return json.encodeToString(listOf(active))
+        return json.encodeToString(kotlinx.serialization.builtins.ListSerializer(InterfaceProfile.serializer()), listOf(active))
     }
 
     companion object {

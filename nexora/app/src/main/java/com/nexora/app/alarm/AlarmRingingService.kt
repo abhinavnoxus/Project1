@@ -105,11 +105,11 @@ class AlarmRingingService : Service() {
                 timeoutJob = scope.launch {
                     delay(AlarmMath.ringTimeoutMillis(alarm ?: com.nexora.app.domain.model.Alarm(id = alarmId)))
                     Log.i(TAG, "ring timeout for alarm $alarmId")
-                    AlarmController.expire(this@AlarmRingingService, alarmId, triggerAt)
+                    AlarmController.expire(applicationContext, alarmId, triggerAt)
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, "ringing setup failed", t)
-                AlarmController.expire(this, alarmId, triggerAt)
+                AlarmController.expire(applicationContext, alarmId, triggerAt)
             }
         }
         return START_NOT_STICKY

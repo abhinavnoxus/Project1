@@ -2,7 +2,6 @@ package com.nexora.app.platform
 
 import android.app.ActivityManager
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.util.DisplayMetrics
 import android.view.WindowManager
@@ -82,11 +81,8 @@ data class DeviceProfile(
             wm?.defaultDisplay?.getRealMetrics(metrics)
             val refresh = runCatching { wm?.defaultDisplay?.refreshRate ?: 60f }.getOrDefault(60f)
 
-            val gpu = runCatching {
-                val pm = context.packageManager
-                val info = pm.getSystemFeature(PackageManager.FEATURE_OPENGLES_EXTENSION_PACK)
-                if (info) null else null
-            }.getOrNull()
+            // GPU string comes from the system property exposed by the driver stack.
+            val gpu = System.getProperty("ro.hardware.egl") ?: System.getProperty("ro.opengles.version")
 
             return DeviceProfile(
                 manufacturer = Build.MANUFACTURER.orEmpty(),
@@ -96,7 +92,7 @@ data class DeviceProfile(
                 cpuCores = Runtime.getRuntime().availableProcessors(),
                 totalRamMb = if (mi.totalMem > 0) mi.totalMem / (1024 * 1024) else 0L,
                 lowRamDevice = am?.isLowRamDevice ?: false,
-                gpuRenderer = gpu ?: System.getProperty("ro.hardware.egl"),
+                gpuRenderer = gpu,
                 maxRefreshRate = refresh,
                 widthPx = metrics.widthPixels,
                 heightPx = metrics.heightPixels,

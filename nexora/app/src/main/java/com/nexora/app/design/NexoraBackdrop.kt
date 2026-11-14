@@ -18,7 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 
@@ -128,10 +132,9 @@ fun blurSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 @Composable
 fun Modifier.staticBlur(radiusDp: Float, spec: GlassSpec = NexoraTheme.spec): Modifier {
     if (!blurSupported() || radiusDp <= 0.5f || spec.reducedOrOff) return this
-    val radius = androidx.compose.ui.platform.LocalDensity.current.run { radiusDp.dp.toPx() }
-    val effect = remember(radius) {
-        androidx.compose.ui.graphics.BlurEffect(radius, radius, androidx.compose.ui.graphics.TileMode.Clamp)
-            .asComposeRenderEffect()
+    val radiusPx = with(LocalDensity.current) { radiusDp.dp.toPx() }
+    val effect = remember(radiusPx) {
+        androidx.compose.ui.graphics.BlurEffect(radiusPx, radiusPx, TileMode.Clamp).asComposeRenderEffect()
     }
     return this.graphicsLayer { renderEffect = effect }
 }
