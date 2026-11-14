@@ -71,7 +71,8 @@ object AlarmMath {
         // DST gap (spring forward): the requested wall time does not exist. Walk forward
         // minute by minute from the start of the day and return the first real instant
         // at or after the requested local time. Bounded so it can never loop forever.
-        var cursor = date.atStartOfDay(zone)
+        // Use ZonedDateTime.now-style zone rules so the walk respects the offset jump.
+        var cursor = ZonedDateTime.of(date, java.time.LocalTime.MIDNIGHT, zone)
         var guard = 0
         while (guard <= 26 * 60) {
             val localTime = cursor.toLocalTime()

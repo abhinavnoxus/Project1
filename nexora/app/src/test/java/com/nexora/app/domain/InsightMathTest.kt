@@ -18,7 +18,8 @@ class InsightMathTest {
         FocusSession(
             id = 0,
             startedAt = day.atTime(startHour, 0).atZone(zone).toInstant().toEpochMilli(),
-            endedAt = day.atTime(startHour, minutes).atZone(zone).toInstant().toEpochMilli(),
+            endedAt = day.atTime(startHour, 0).plusMinutes(minutes.toLong())
+                .atZone(zone).toInstant().toEpochMilli(),
             plannedMinutes = minutes,
             completed = true,
             label = "Focus",

@@ -233,7 +233,8 @@ private fun SundialClock(now: ZonedDateTime, spec: GlassSpec, modifier: Modifier
             // Hour rays
             for (h in 6..18 step 2) {
                 val frac = (h - 6f) / 12f
-                val a = Math.toRadians((180f + frac * 180f))
+                @Suppress("UNNECESSARY_SAFE_CALL")
+                val a = Math.toRadians((180f + frac * 180f).toDouble())
                 val inner = radius * 0.93f
                 drawLine(
                     color = spec.textColor.copy(alpha = 0.25f),

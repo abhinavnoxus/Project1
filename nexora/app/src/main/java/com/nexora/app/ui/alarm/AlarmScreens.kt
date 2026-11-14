@@ -181,7 +181,7 @@ private fun AlarmRow(
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                NexoraSwitch(alarm.enabled) { onToggle(alarm.id, it) }
+                NexoraSwitch(alarm.enabled, { onToggle(alarm.id, it) })
                 IconButton(onClick = { onPreview(alarm) }) {
                     Icon(
                         Icons.Rounded.MusicNote,
