@@ -93,6 +93,16 @@ jobs:
           gh issue comment 2 --body-file /tmp/report.md || \
             gh issue create --title "NEXORA CI report" --body-file /tmp/report.md
 
+      - name: Verify APK contents
+        if: steps.assemble.outcome == 'success'
+        run: bash ./scripts/verify-apk.sh | tee /tmp/apk.txt
+
+      - name: Publish APK verification
+        if: steps.assemble.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue comment 2 --body-file /tmp/apk.txt
+
       - name: Upload APKs
         if: always()
         uses: actions/upload-artifact@v4
