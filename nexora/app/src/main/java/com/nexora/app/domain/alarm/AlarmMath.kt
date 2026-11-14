@@ -64,21 +64,26 @@ object AlarmMath {
     fun atTime(date: LocalDate, time: TimeOfDay, zone: ZoneId): ZonedDateTime {
         val local = LocalDateTime.of(date, java.time.LocalTime.of(time.hour, time.minute))
         val resolved = local.atZone(zone)
-        return if (resolved.toLocalDate() != date || resolved.hour != time.hour || resolved.minute != time.minute) {
-            // Inside a DST gap — the offset shifted the wall clock. Walk forward to the
-            // first instant whose local time is >= the requested time.
-            var candidate = resolved
-            var guard = 0
-            while ((candidate.hour < time.hour || (candidate.hour == time.hour && candidate.minute < time.minute))
-                && guard < 180
-            ) {
-                candidate = resolved.plusMinutes(guard.toLong())
-                guard++
-            }
-            candidate
-        } else {
-            resolved
+        // Normal case: the zone maps the wall clock onto the requested time.
+        if (resolved.toLocalDate() == date && resolved.hour == time.hour && resolved.minute == time.minute) {
+            return resolved
         }
+        // DST gap (spring forward): the requested wall time does not exist. Walk forward
+        // minute by minute from the start of the day and return the first real instant
+        // at or after the requested local time. Bounded so it can never loop forever.
+        var cursor = date.atStartOfDay(zone)
+        var guard = 0
+        while (guard <= 26 * 60) {
+            val localTime = cursor.toLocalTime()
+            if (cursor.toLocalDate() != date || localTime.hour > time.hour ||
+                (localTime.hour == time.hour && localTime.minute >= time.minute)
+            ) {
+                return cursor
+            }
+            cursor = cursor.plusMinutes(1)
+            guard++
+        }
+        return resolved
     }
 
     /** Instants after [nowMillis] for the next [count] occurrences — used by the UI preview. */

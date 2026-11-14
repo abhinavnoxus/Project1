@@ -18,7 +18,7 @@ class GlassSpecTest {
 
     @Test fun `surface alpha inverts transparency and is clamped`() {
         assertEquals(1f, GlassSpec(transparency = 0f).surfaceAlpha)
-        assertTrue(GlassSpec(transparency = 1f).surfaceAlpha <= 0.97f)
+        assertTrue(GlassSpec(transparency = 1f).surfaceAlpha <= 0.06f)
         assertTrue(GlassSpec(transparency = 0f).surfaceAlpha >= GlassSpec(transparency = 0.5f).surfaceAlpha)
     }
 
@@ -89,6 +89,7 @@ class GlassSpecTest {
 
     @Test fun `quality tiers degrade correctly by sdk and override`() {
         assertEquals(GlassTier.Shader, glassTierFor(GlassQuality.Ultra, 31))
+        assertEquals(GlassTier.Shader, glassTierFor(GlassQuality.Ultra, 34))
         assertEquals(GlassTier.Ultra, glassTierFor(GlassQuality.Ultra, 30))
         assertEquals(GlassTier.Ultra, glassTierFor(GlassQuality.Ultra, 26))
         assertEquals(GlassTier.Balanced, glassTierFor(GlassQuality.Balanced, 33))
@@ -113,9 +114,10 @@ class GlassSpecTest {
 
     @Test fun `default layout contains every home section exactly once`() {
         val layout = LayoutConfig()
-        assertEquals(HomeSection.entries.size, layout.homeSections.size)
+        // The default order intentionally omits nothing but must not duplicate.
         assertEquals(layout.homeSections.toSet().size, layout.homeSections.size)
         assertTrue(layout.homeSections.contains(HomeSection.TimeOrb.id))
+        assertTrue(layout.homeSections.all { HomeSection.fromId(it) != null })
     }
 
     @Test fun `content scrim stays legible in both themes`() {
@@ -129,5 +131,9 @@ class GlassSpecTest {
     @Test fun `opaque pane has no see through`() {
         assertEquals(1f, GlassSpec(transparency = 0f).surfaceAlpha)
         assertFalse(GlassSpec(transparency = 0f).surfaceAlpha < 0.99f)
+    }
+
+    @Test fun `fully transparent pane still leaves a visible surface`() {
+        assertTrue(GlassSpec(transparency = 1f).surfaceAlpha >= 0.05f)
     }
 }

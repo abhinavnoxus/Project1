@@ -55,7 +55,7 @@ data class GlassSpec(
     val reducedMotion: Boolean = false,
 ) {
     /** Effective surface alpha after the transparency slider. */
-    val surfaceAlpha: Float get() = (1f - transparency).coerceIn(0.12f, 0.97f)
+    val surfaceAlpha: Float get() = (1f - transparency).coerceIn(0.05f, 1f)
 
     /** Alpha used for the inner content scrim so text stays legible at every material. */
     val contentScrimAlpha: Float

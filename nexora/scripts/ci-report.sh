@@ -45,6 +45,17 @@ OUT="${5:-/tmp/report.md}"
   echo "</details>"
   echo
 
+  if [ -d app/build/reports/tests/testDebugUnitTest/classes ]; then
+    echo "### Failing assertions"
+    echo
+    echo '```'
+    grep -hE "FAILED|expected:|AssertionError|at com\\.nexora" app/build/reports/tests/testDebugUnitTest/classes/*.html 2>/dev/null \
+      | sed -e 's/<[^>]*>//g' -e 's/&quot;/\"/g' -e 's/&gt;/>/g' -e 's/&lt;/</g' \
+      | head -n 80 || true
+    echo '```'
+    echo
+  fi
+
   echo "<details><summary>unit test log (tail 60)</summary>"
   echo
   echo '```'

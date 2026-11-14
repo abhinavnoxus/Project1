@@ -68,8 +68,8 @@ value class WeekdayMask(val bits: Int = 0) {
     fun label(): String = when {
         bits == 0 -> "Once"
         isEveryDay -> "Every day"
-        bits == 0b0011111 -> "Weekdays"
-        bits == 0b1100000 -> "Weekends"
+        bits == WeekdayMask.of(java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.TUESDAY, java.time.DayOfWeek.WEDNESDAY, java.time.DayOfWeek.THURSDAY, java.time.DayOfWeek.FRIDAY).bits -> "Weekdays"
+        bits == WeekdayMask.of(java.time.DayOfWeek.SATURDAY, java.time.DayOfWeek.SUNDAY).bits -> "Weekends"
         else -> java.time.DayOfWeek.entries.filter { contains(it) }
             .joinToString(" ") { it.name.take(3).lowercase().replaceFirstChar(Char::uppercase) }
     }
