@@ -51,15 +51,14 @@ adb shell cmd notification post ...               # or just let one fire
 - **Calendar is read-only.** There is no code path that writes to the calendar provider.
 - **Intelligence is rule-based, offline.** It is not a language model. It produces a
   structured briefing from local rules and always labels suggestions.
-- **Profile import** currently requires a NEXORA profile JSON supplied to the import flow;
-  the in-app file picker wiring is pending and the UI says so.
-- **Focus "extend"** is acknowledged in the UI but does not extend the persisted session
-  length yet; the session must be completed and restarted.
-- **Routine streaks** are computed for the routines screen from stored logs, but the
-  screen currently receives an empty map from the navigation layer; the Home panel does not
-  depend on it.
-- **Timers and stopwatch are process-local.** They survive backgrounding (absolute
-  instants) but not process death, because they are not yet persisted.
+- **Profile import** accepts a NEXORA profile JSON chosen through the system document
+  picker; there is no paste-a-URL import, by design (no network).
+- **Focus "extend"** updates the persisted `plannedMinutes` of the running session, but the
+  ring's progress bar is drawn against the original start instant, so the visual arc
+  restarts from a lower fill after an extension.
+- **Timers** are persisted as absolute instants and restored after process death.
+  **The stopwatch is still process-local**: it survives backgrounding but not a process
+  kill, because a stopwatch has no meaningful wall-clock meaning across a restart.
 - **Widget** refreshes on a single minute-boundary alarm; Realme UI may batch that wake-up,
   so the widget can lag by up to a minute under Doze.
 - **Locale.** Only `en` resources are shipped.
