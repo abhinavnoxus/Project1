@@ -108,6 +108,7 @@ fun HomeScreen(
     onOpenRoutines: () -> Unit,
     onOpenReminders: () -> Unit,
     onOpenBriefing: () -> Unit = {},
+    onOpenPlanner: () -> Unit = {},
 ) {
     val entrance = rememberEntrance(spec, 500)
     val progress = entrance.value

@@ -117,6 +117,7 @@ private sealed interface Overlay {
     data object Focus : Overlay
     data object Routines : Overlay
     data object Briefing : Overlay
+    data object Planner : Overlay
     data class AlarmEditor(val alarm: Alarm?) : Overlay
     data class Ringing(val alarmId: Long, val triggerAt: Long) : Overlay
 }
@@ -306,6 +307,7 @@ fun RootScaffold(
                                     onOpenAlarms = { destination = Destination.Alarms },
                                     onOpenAlarmDetail = { id -> overlay = Overlay.AlarmEditor(alarms.firstOrNull { it.id == id }) },
                                     onOpenCalendar = { destination = Destination.Agenda },
+                                    onOpenPlanner = { overlay = Overlay.Planner },
                                     onOpenTimer = { destination = Destination.Time },
                                     onStartFocus = { overlay = Overlay.Focus },
                                     onOpenFocus = { overlay = Overlay.Focus },
@@ -316,7 +318,7 @@ fun RootScaffold(
                                     onAddTask = { showAddTask = true },
                                     onOpenRoutines = { overlay = Overlay.Routines },
                                     onOpenBriefing = { destination = Destination.Briefing },
-                                    onOpenReminders = { destination = Destination.Agenda },
+                                    onOpenReminders = { overlay = Overlay.Planner },
                                 )
 
                                 Destination.Alarms -> AlarmListScreen(
@@ -359,7 +361,7 @@ fun RootScaffold(
                                     onRequestRefresh = viewModel::refreshCalendar,
                                     onAddTask = { showAddTask = true },
                                     onToggleTask = viewModel::setTaskDone,
-                                    onOpenPlanner = { overlay = Overlay.WorldClocks },
+                                    onOpenPlanner = { overlay = Overlay.Planner },
                                 )
 
                                 Destination.Briefing -> com.nexora.app.ui.ai.BriefingScreen(
@@ -485,6 +487,14 @@ fun RootScaffold(
                                 destination = Destination.Time
                                 overlay = null
                             },
+                        )
+
+                        Overlay.Planner -> com.nexora.app.ui.planner.PlannerScreen(
+                            tasks = tasks,
+                            spec = spec,
+                            onToggle = viewModel::setTaskDone,
+                            onDelete = viewModel::deleteTask,
+                            onAdd = { showAddTask = true },
                         )
 
                         Overlay.Briefing -> com.nexora.app.ui.ai.BriefingScreen(
