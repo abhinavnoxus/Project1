@@ -120,14 +120,14 @@ fun SettingsScreen(
                     "Dark theme",
                     icon = Icons.Rounded.DarkMode,
                     trailing = {
-                        NexoraSwitch(spec.darkTheme) { on -> onUpdateSpec { it.copy(darkTheme = on) } }
+                        NexoraSwitch(spec.darkTheme, { on -> onUpdateSpec { it.copy(darkTheme = on) } })
                     },
                 )
                 SettingsRow(
                     "Haptics",
                     icon = Icons.Rounded.Vibration,
                     trailing = {
-                        NexoraSwitch(spec.haptics) { on -> onUpdateSpec { it.copy(haptics = on) } }
+                        NexoraSwitch(spec.haptics, { on -> onUpdateSpec { it.copy(haptics = on) } })
                     },
                 )
                 SettingsRow(

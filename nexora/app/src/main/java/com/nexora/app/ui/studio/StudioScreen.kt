@@ -169,9 +169,9 @@ fun StudioScreen(
                             "Show glass border",
                             subtitle = "Hairline rim light on every pane",
                             trailing = {
-                                NexoraSwitch(spec.borderVisible) { on ->
+                                NexoraSwitch(spec.borderVisible, { on ->
                                     onUpdateSpec { it.copy(borderVisible = on) }
-                                }
+                                })
                             },
                         )
                     }
@@ -232,7 +232,7 @@ fun StudioScreen(
                             "Dark theme",
                             subtitle = "Switch the whole interface between light and dark",
                             trailing = {
-                                NexoraSwitch(spec.darkTheme) { on -> onUpdateSpec { it.copy(darkTheme = on) } }
+                                NexoraSwitch(spec.darkTheme, { on -> onUpdateSpec { it.copy(darkTheme = on) } })
                             },
                         )
                     }
@@ -242,8 +242,8 @@ fun StudioScreen(
             StudioTab.Layout -> {
                 item {
                     GlassPanel(title = "Home sections", subtitle = "Reorder what the command centre shows") {
+                        val order = active?.layout?.homeSections ?: LayoutConfig().homeSections
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            val order = active?.layout?.homeSections ?: LayoutConfig().homeSections
                             for (index in order.indices) {
                                 val id = order[index]
                                 val section = HomeSection.fromId(id) ?: continue
@@ -355,9 +355,9 @@ fun StudioScreen(
                             SettingsRow(
                                 "Show navigation labels",
                                 trailing = {
-                                    NexoraSwitch(active?.layout?.showNavigationLabels ?: true) { on ->
+                                    NexoraSwitch(active?.layout?.showNavigationLabels ?: true, { on ->
                                         onUpdateLayout { it.copy(showNavigationLabels = on) }
-                                    }
+                                    })
                                 },
                             )
                         }
@@ -451,12 +451,12 @@ fun StudioScreen(
                         SettingsRow(
                             "Haptic feedback",
                             subtitle = "Short taps on every control",
-                            trailing = { NexoraSwitch(spec.haptics) { on -> onUpdateSpec { it.copy(haptics = on) } } },
+                            trailing = { NexoraSwitch(spec.haptics, { on -> onUpdateSpec { it.copy(haptics = on) } }) },
                         )
                         SettingsRow(
                             "Interface sounds",
                             subtitle = "Subtle confirmation tones",
-                            trailing = { NexoraSwitch(spec.sound) { on -> onUpdateSpec { it.copy(sound = on) } } },
+                            trailing = { NexoraSwitch(spec.sound, { on -> onUpdateSpec { it.copy(sound = on) } }) },
                         )
                     }
                 }
