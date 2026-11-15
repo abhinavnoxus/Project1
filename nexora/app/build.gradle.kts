@@ -78,6 +78,11 @@ android {
                 // Force record mode so CI always produces fresh PNGs.
                 it.systemProperty("robolectric.graphicsMode", "NATIVE")
                 it.systemProperty("roborazzi.test.record", "true")
+                // Absolute destination so the test never has to guess the working dir.
+                it.systemProperty(
+                    "nexora.screenshotDir",
+                    rootProject.layout.projectDirectory.dir("docs/screenshots").asFile.absolutePath,
+                )
             }
         }
     }

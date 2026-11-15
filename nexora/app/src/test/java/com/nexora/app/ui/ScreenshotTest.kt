@@ -105,15 +105,16 @@ class ScreenshotTest {
             val moduleDir = java.io.File(System.getProperty("user.dir") ?: ".")
             val src = java.io.File(moduleDir, path)
             if (!src.exists()) {
-                println("screenshot not found at $src")
+                println("SCREENSHOT MISSING at $src")
                 return@runCatching
             }
-            val dest = java.io.File(moduleDir, "../../docs/screenshots").canonicalFile
+            val configured = System.getProperty("nexora.screenshotDir")
+            val dest = if (configured != null) java.io.File(configured) else java.io.File(moduleDir, "../../docs/screenshots")
             dest.mkdirs()
             val out = java.io.File(dest, src.name)
             src.copyTo(out, overwrite = true)
-            println("screenshot published to $out (${out.length()} bytes)")
-        }.onFailure { println("screenshot publish failed: ${it.message}") }
+            println("SCREENSHOT PUBLISHED to ${out.absolutePath} (${out.length()} bytes, exists=${out.exists()})")
+        }.onFailure { println("SCREENSHOT PUBLISH FAILED: ${it.message}") }
     }
 
     private fun sampleAlarm(): Alarm = Alarm(
