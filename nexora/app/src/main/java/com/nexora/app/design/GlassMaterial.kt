@@ -36,10 +36,6 @@ enum class GlassMaterial(
     val darkTintTop: Color,
     val darkTintBottom: Color,
 ) {
-    /** Body tint for the current theme. */
-    fun top(dark: Boolean): Color = if (dark) darkTintTop else tintTop
-    fun bottom(dark: Boolean): Color = if (dark) darkTintBottom else tintBottom
-
     Crystal(
         id = "crystal",
         displayName = "Crystal",
@@ -105,6 +101,10 @@ enum class GlassMaterial(
         darkTintTop = Color(0xFF3A2456),
         darkTintBottom = Color(0xFF161033),
     );
+
+    /** Body tint for the current theme. */
+    fun top(dark: Boolean): Color = if (dark) darkTintTop else tintTop
+    fun bottom(dark: Boolean): Color = if (dark) darkTintBottom else tintBottom
 
     /** Whether text drawn on this material should be light. */
     val prefersLightText: Boolean

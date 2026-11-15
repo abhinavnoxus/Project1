@@ -48,6 +48,12 @@ jobs:
             ./gradlew --version
           fi
 
+      - name: Static sanity checks
+        run: |
+          # Cheap structural checks that catch the mistakes that have actually bitten this
+          # project: enum helpers placed before the entry list, and duplicated imports.
+          bash ./scripts/static-checks.sh
+
       - name: Assemble debug
         id: assemble
         continue-on-error: true
