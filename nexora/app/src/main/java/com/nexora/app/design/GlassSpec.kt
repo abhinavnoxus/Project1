@@ -83,8 +83,17 @@ data class GlassSpec(
     val textColor: Color
         get() = if (darkTheme) Color(0xFFF2F6FF) else Color(0xFF10141C)
 
+    /**
+     * Secondary text. Kept deliberately high-contrast: on a translucent pane the effective
+     * background is a blend, so a "soft grey" reads as invisible. This clears WCAG AA
+     * against both the light and the dark pane bodies.
+     */
     val secondaryTextColor: Color
-        get() = if (darkTheme) Color(0xFFA9B4C8) else Color(0xFF4C5668)
+        get() = if (darkTheme) Color(0xFFC4CEDE) else Color(0xFF3B4557)
+
+    /** Tertiary text for units and captions. */
+    val tertiaryTextColor: Color
+        get() = if (darkTheme) Color(0xFF93A0B4) else Color(0xFF5A6478)
 
     val accentColor: Color get() = accent.seed
 

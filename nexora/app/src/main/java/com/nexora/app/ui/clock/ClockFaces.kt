@@ -6,7 +6,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -123,32 +125,36 @@ private fun HaloClock(now: ZonedDateTime, spec: GlassSpec, use24: Boolean, modif
                     startAngle = 0f,
                     sweepAngle = hourFraction * 360f,
                     useCenter = false,
-                    topLeft = Offset(center.x - radius * 0.80f, center.y - radius * 0.80f),
-                    size = Size(radius * 1.60f, radius * 1.60f),
+                    topLeft = Offset(center.x - radius * 0.885f, center.y - radius * 0.885f),
+                    size = Size(radius * 1.77f, radius * 1.77f),
                     style = Stroke(width = 5f, cap = StrokeCap.Round),
                 )
             }
 
-            // Hands
-            drawClockHand(center, hourFraction * 360f, radius * 0.42f, 6.5f, spec.textColor.copy(alpha = 0.92f))
-            drawClockHand(center, minuteFraction * 360f, radius * 0.66f, 4.5f, spec.textColor)
-            drawClockHand(center, secondsFraction * 360f, radius * 0.74f, 2f, spec.accentColor)
-
-            drawCircle(color = spec.accentColor, radius = radius * 0.035f, center = center)
-            drawCircle(color = spec.material.rimLight.copy(alpha = 0.9f), radius = radius * 0.015f, center = center)
+            // No clock hands on this face. A digital readout sits at the centre, and hands
+            // crossing it was the single worst visual defect in the first render. The
+            // sweep ring carries the "where are we in the hour" information instead, which
+            // is also what makes this face readable at a glance.
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(Modifier.height(0.dp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
             Text(
                 now.format(if (use24) TIME_24 else TIME_12),
-                style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum", fontWeight = FontWeight.Light),
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontFeatureSettings = "tnum",
+                    fontWeight = FontWeight.Light,
+                ),
                 color = spec.textColor,
             )
-            Text(
-                if (use24) "" else now.format(AM_PM),
-                style = MaterialTheme.typography.labelSmall,
-                color = spec.accentColor,
-            )
+            if (!use24) {
+                Text(
+                    now.format(AM_PM),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = spec.accentColor,
+                )
+            }
         }
     }
 }

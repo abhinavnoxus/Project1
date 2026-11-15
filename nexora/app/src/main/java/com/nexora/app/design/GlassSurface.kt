@@ -115,8 +115,8 @@ private fun Modifier.glassBody(
     blurPx: Float,
     shadowPx: Float,
 ): Modifier = this.drawWithCache {
-    val top = tint ?: spec.material.tintTop
-    val bottom = tint ?: spec.material.tintBottom
+    val top = tint ?: spec.material.top(spec.darkTheme)
+    val bottom = tint ?: spec.material.bottom(spec.darkTheme)
     val accent = spec.accentColor
     val w = size.width
     val h = size.height
@@ -126,9 +126,9 @@ private fun Modifier.glassBody(
 
     val body = Brush.linearGradient(
         colors = listOf(
-            top.copy(alpha = bodyAlpha(spec.surfaceAlpha, 0.9f)),
-            blend(top, accent, 0.16f).copy(alpha = bodyAlpha(spec.surfaceAlpha, 0.72f)),
-            bottom.copy(alpha = bodyAlpha(spec.surfaceAlpha, 0.88f)),
+            top.copy(alpha = bodyAlpha(spec.surfaceAlpha, 0.94f, spec.darkTheme)),
+            blend(top, accent, 0.18f).copy(alpha = bodyAlpha(spec.surfaceAlpha, 0.80f, spec.darkTheme)),
+            bottom.copy(alpha = bodyAlpha(spec.surfaceAlpha, 0.92f, spec.darkTheme)),
         ),
         start = Offset(w * (0.5f + lightDx * 0.5f), h * (0.5f + lightDy * 0.5f) - h * 0.5f),
         end = Offset(w * (0.5f - lightDx * 0.5f) + w * 0.1f, h * 1.1f),
@@ -210,9 +210,17 @@ private fun Modifier.glassBody(
     }
 }
 
-/** Where the pane's opacity starts before per-stop shaping. */
-private fun bodyAlpha(surfaceAlpha: Float, weight: Float): Float =
-    (surfaceAlpha * weight).coerceIn(0.05f, 0.98f)
+/**
+ * Where the pane's opacity starts before per-stop shaping.
+ *
+ * Dark theme pushes the body further towards opaque: a dark-on-dark pane at low alpha is
+ * invisible, and the reference NEXORA look is a solid-feeling slab of smoked glass with a
+ * bright rim, not a transparent film.
+ */
+private fun bodyAlpha(surfaceAlpha: Float, weight: Float, dark: Boolean = false): Float {
+    val boosted = if (dark) (surfaceAlpha * 0.55f + 0.45f) else surfaceAlpha
+    return (boosted * weight).coerceIn(0.05f, 0.99f)
+}
 
 private fun blend(a: Color, b: Color, t: Float): Color = Color(
     red = a.red + (b.red - a.red) * t,

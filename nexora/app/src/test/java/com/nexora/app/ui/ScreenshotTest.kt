@@ -1,6 +1,14 @@
 package com.nexora.app.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -92,14 +100,82 @@ class ScreenshotTest {
             }
         }
         compose.waitForIdle()
-        // Write the PNG straight to its final destination. No copy step, no guessing
-        // about the working directory: the absolute path comes from Gradle.
+        capture("home")
+    }
+
+    /** Renders the current composition to docs/screenshots/<name>.png. */
+    private fun capture(name: String) {
         val dir = System.getProperty("nexora.screenshotDir")
             ?: java.io.File(System.getProperty("user.dir"), "../../docs/screenshots").absolutePath
         java.io.File(dir).mkdirs()
-        val out = java.io.File(dir, "home.png")
+        val out = java.io.File(dir, "$name.png")
         compose.onRoot().captureRoboImage(out.absolutePath)
         println("SCREENSHOT -> ${out.absolutePath} exists=${out.exists()} bytes=${out.length()}")
+    }
+
+    // ------------------------------------------------------------------ clock faces
+
+    @Test
+    fun clockFaceHalo() = faceShot("face-halo", ClockFace.Halo)
+
+    @Test
+    fun clockFaceMeridian() = faceShot("face-meridian", ClockFace.Meridian)
+
+    @Test
+    fun clockFaceSundial() = faceShot("face-sundial", ClockFace.Sundial)
+
+    @Test
+    fun clockFaceMinimal() = faceShot("face-minimal", ClockFace.Minimal)
+
+    @Test
+    fun clockFaceEpoch() = faceShot("face-epoch", ClockFace.Epoch)
+
+    private fun faceShot(name: String, face: ClockFace) {
+        compose.setContent {
+            NexoraTheme(spec = spec, quality = GlassQuality.Balanced) {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier
+                        .fillMaxSize()
+                        .background(spec.ambient.colors.first())
+                        .padding(20.dp),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    com.nexora.app.ui.clock.LiveClock(
+                        face = face,
+                        now = now,
+                        spec = spec,
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth().aspectRatio(1f),
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        capture(name)
+    }
+
+    // ------------------------------------------------------------------ alarm list
+
+    @Test
+    fun alarmList() {
+        compose.setContent {
+            NexoraTheme(spec = spec, quality = GlassQuality.Balanced) {
+                com.nexora.app.ui.alarm.AlarmListScreen(
+                    alarms = listOf(
+                        sampleAlarm(),
+                        sampleAlarm().copy(id = 2L, label = "Evening walk", hour = 18, minute = 45, enabled = false),
+                        sampleAlarm().copy(id = 3L, label = "Sunday lie-in", hour = 9, minute = 0, repeat = com.nexora.app.domain.model.WeekdayMask.of(java.time.DayOfWeek.SUNDAY)),
+                    ),
+                    spec = spec,
+                    onToggle = { _, _ -> },
+                    onEdit = {},
+                    onCreate = {},
+                    onHealth = {},
+                    onPreviewRing = {},
+                )
+            }
+        }
+        compose.waitForIdle()
+        capture("alarms")
     }
 
     private fun sampleAlarm(): Alarm = Alarm(
