@@ -2,6 +2,8 @@ package com.nexora.app.design
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.font.Font
+import com.nexora.app.R
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -35,16 +37,44 @@ object NexoraTheme {
  * Type ramp. Sizes are multiplied by the user's typography scale and never allowed
  * below the platform's minimum legible size.
  */
+/**
+ * The NEXORA typeface.
+ *
+ * Inter, shipped as a single variable TTF under the SIL Open Font License
+ * (see `licenses/Inter-OFL.txt`). Declaring the weight range against one file means the
+ * text renderer synthesises nothing — all eight weights are real.
+ */
+val InterFamily: FontFamily = FontFamily(
+    Font(R.font.inter_variable, weight = FontWeight.Thin),
+    Font(R.font.inter_variable, weight = FontWeight.Light),
+    Font(R.font.inter_variable, weight = FontWeight.Normal),
+    Font(R.font.inter_variable, weight = FontWeight.Medium),
+    Font(R.font.inter_variable, weight = FontWeight.SemiBold),
+    Font(R.font.inter_variable, weight = FontWeight.Bold),
+    Font(R.font.inter_variable, weight = FontWeight.Black),
+)
+
+/** Tabular-figure variant used by every clock and timer readout. */
+val ClockDigits: TextStyle = TextStyle(
+    fontFamily = InterFamily,
+    fontWeight = FontWeight.Light,
+    fontFeatureSettings = "tnum",
+)
+
 @Composable
 fun nexoraTypography(scale: Float): Typography {
     val s = scale.coerceIn(0.85f, 1.3f)
+    // A real typeface, not the platform default. Inter is a variable font, so one 876 KB
+    // asset covers 100-900 with no per-weight files. Tabular figures are forced for the
+    // clock faces and every numeric readout so digits stop shuffling sideways as they tick.
     fun Style(size: Int, weight: FontWeight, tracking: Float = 0f, lineHeight: Int = (size * 1.28f).toInt()) =
         TextStyle(
-            fontFamily = FontFamily.SansSerif,
+            fontFamily = InterFamily,
             fontWeight = weight,
             fontSize = (size * s).sp,
             lineHeight = (lineHeight * s).sp,
             letterSpacing = tracking.em,
+            fontFeatureSettings = "tnum, cv05, ss03",
         )
 
     return Typography(
@@ -62,7 +92,7 @@ fun nexoraTypography(scale: Float): Typography {
         bodySmall = Style(12, FontWeight.Normal, tracking = 0.02f),
         labelLarge = Style(14, FontWeight.Medium, tracking = 0.06f),
         labelMedium = Style(12, FontWeight.Medium, tracking = 0.08f),
-        labelSmall = Style(10.5f.let { 11 }, FontWeight.Medium, tracking = 0.1f),
+        labelSmall = Style(11, FontWeight.Medium, tracking = 0.1f),
     )
 }
 

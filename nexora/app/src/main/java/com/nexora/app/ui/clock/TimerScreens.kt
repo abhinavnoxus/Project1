@@ -240,7 +240,7 @@ fun StopwatchScreen(
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         formatClockPrecise(elapsedMillis),
-                        style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Light),
+                        style = MaterialTheme.typography.displayMedium.copy(fontFeatureSettings = "tnum", fontWeight = FontWeight.Light),
                         color = spec.textColor,
                     )
                     Spacer(Modifier.height(18.dp))

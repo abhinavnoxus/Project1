@@ -8,6 +8,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +39,14 @@ fun NexoraBackdrop(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val backdrop = spec.ambient
-    val drift = !spec.reducedOrOff && animate && quality != GlassQuality.Efficient
+    // Drift is opt-in, not opt-out. On this GPU a continuously redrawing full-screen
+    // Canvas behind a scrolling list is the single biggest source of dropped frames, so
+    // it runs only on the Ultra tier AND when the caller says the screen is static
+    // (no overlay is sliding in) AND motion is on.
+    val drift = spec.ambientDrift &&
+        quality == GlassQuality.Ultra &&
+        !spec.reducedOrOff &&
+        animate
 
     val phase = if (drift) {
         val transition = rememberInfiniteTransition(label = "backdrop")
@@ -58,8 +66,13 @@ fun NexoraBackdrop(
         0f
     }
 
+    // A static backdrop is drawn once and cached; only the drifting variant recomposes.
     Box(Modifier.fillMaxSize()) {
-        Canvas(Modifier.fillMaxSize()) { drawAmbient(backdrop, spec, phase, drift) }
+        if (drift) {
+            Canvas(Modifier.fillMaxSize()) { drawAmbient(backdrop, spec, phase, drift = true) }
+        } else {
+            Box(Modifier.fillMaxSize().background(staticBackdropBrush(backdrop))) 
+        }
         content()
     }
 }
@@ -86,23 +99,49 @@ private fun DrawScope.drawAmbient(
     val tertiary = spec.accent.tertiary
     val sway = (phase - 0.5f) * 0.16f
 
-    val orbs = listOf(
-        Triple(Offset(w * (0.28f + sway), h * 0.22f), w * 0.72f, accent.copy(alpha = 0.30f)),
-        Triple(Offset(w * (0.78f - sway), h * 0.62f), w * 0.62f, secondary.copy(alpha = 0.24f)),
-        Triple(Offset(w * (0.5f + sway * 0.6f), h * 0.92f), w * 0.5f, tertiary.copy(alpha = 0.14f)),
+    // Three orbs drawn directly. No List, no Triple, no lambda per frame: this runs on
+    // every animation frame, and per-frame garbage is what shows up as jank on a
+    // mid-range GPU. Offsets are the only unavoidable allocations.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(accent.copy(alpha = 0.30f), Color.Transparent),
+            center = Offset(w * (0.28f + sway), h * 0.22f),
+            radius = w * 0.72f,
+        ),
+        radius = w * 0.72f,
+        center = Offset(w * (0.28f + sway), h * 0.22f),
     )
-    orbs.forEach { (center, radius, color) ->
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(color, Color.Transparent),
-                center = center,
-                radius = radius,
-            ),
-            radius = radius,
-            center = center,
-        )
-    }
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(secondary.copy(alpha = 0.24f), Color.Transparent),
+            center = Offset(w * (0.78f - sway), h * 0.62f),
+            radius = w * 0.62f,
+        ),
+        radius = w * 0.62f,
+        center = Offset(w * (0.78f - sway), h * 0.62f),
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(tertiary.copy(alpha = 0.14f), Color.Transparent),
+            center = Offset(w * (0.5f + sway * 0.6f), h * 0.92f),
+            radius = w * 0.5f,
+        ),
+        radius = w * 0.5f,
+        center = Offset(w * (0.5f + sway * 0.6f), h * 0.92f),
+    )
 }
+
+/**
+ * Static backdrop: a single vertical gradient. Cheap, cached by the composition, and it
+ * still carries the profile's colour identity.
+ */
+private fun staticBackdropBrush(backdrop: AmbientBackdrop): Brush = Brush.verticalGradient(
+    colors = listOf(
+        backdrop.colors.firstOrNull() ?: Color.Black,
+        backdrop.colors.getOrNull(1) ?: backdrop.colors.lastOrNull() ?: Color.Black,
+        backdrop.colors.lastOrNull() ?: Color.Black,
+    ),
+)
 
 /** True when this platform can blur a layer at all (API 31+). */
 fun blurSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

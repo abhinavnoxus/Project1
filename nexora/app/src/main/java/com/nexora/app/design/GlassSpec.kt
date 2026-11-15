@@ -53,6 +53,12 @@ data class GlassSpec(
     val haptics: Boolean = true,
     val sound: Boolean = false,
     val reducedMotion: Boolean = false,
+    /**
+     * Whether the ambient backdrop drifts. Default **off**: continuous full-screen
+     * redrawing behind a scrolling list is the most expensive thing this app can do, and
+     * the Narzo 20 Pro's Mali-G76 should not be asked to do it by default.
+     */
+    val ambientDrift: Boolean = false,
 ) {
     /** Effective surface alpha after the transparency slider. */
     val surfaceAlpha: Float get() = (1f - transparency).coerceIn(0.05f, 1f)

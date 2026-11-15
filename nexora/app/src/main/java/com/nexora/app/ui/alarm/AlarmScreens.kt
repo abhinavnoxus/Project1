@@ -237,7 +237,7 @@ fun AlarmEditorScreen(
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             alarm.time.format12h(),
-                            style = MaterialTheme.typography.displayLarge,
+                            style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum"),
                             color = spec.textColor,
                         )
                         Spacer(Modifier.height(14.dp))

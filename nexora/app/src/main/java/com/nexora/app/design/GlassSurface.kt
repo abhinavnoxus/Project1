@@ -158,48 +158,51 @@ private fun Modifier.glassBody(
         )
     } else null
 
+    // Everything expensive is built ONCE per size change, not per frame. On a Mali-G76
+    // every avoided Brush allocation is a measurable win at 90 Hz.
+    val gloss = Brush.verticalGradient(
+        0f to spec.material.rimLight.copy(alpha = 0.26f * spec.reflection),
+        0.35f to Color.Transparent,
+    )
+    val refractionRing = Brush.radialGradient(
+        colors = listOf(
+            Color.Transparent,
+            Color.Transparent,
+            spec.material.rimLight.copy(alpha = 0.10f * spec.reflection),
+        ),
+        center = Offset(w * 0.5f, h * 0.5f),
+        radius = maxOf(w, h) * 0.72f,
+    )
+    val bottomWash = Brush.verticalGradient(
+        0.72f to Color.Transparent,
+        1f to accent.copy(alpha = 0.10f * spec.reflection),
+    )
+    val hairline = spec.material.rimLight.copy(alpha = spec.borderAlpha * 0.3f)
+
     val tier = glassTierFor(quality, Build.VERSION.SDK_INT)
     return@drawWithCache onDrawWithContent {
         if (tier != GlassTier.Efficient) drawPaneShadow(shadowPx, spec)
         drawRect(brush = body)
         if (tier == GlassTier.Efficient) {
-            // Nothing further: one fill, one hairline.
-            drawRect(color = spec.material.rimLight.copy(alpha = spec.borderAlpha * 0.3f), style = Stroke(1f))
+            // Nothing further: one fill, one hairline. Zero extra draw calls.
+            drawRect(color = hairline, style = Stroke(1f))
             drawContent()
             return@onDrawWithContent
         }
 
         // Inner top gloss: a narrow vertical falloff that reads as thickness.
-        drawRect(
-            brush = Brush.verticalGradient(
-                0f to spec.material.rimLight.copy(alpha = 0.26f * spec.reflection),
-                0.35f to Color.Transparent,
-            ),
-        )
+        drawRect(brush = gloss)
         drawRect(brush = specularBrush)
 
         if (tier == GlassTier.Ultra) {
             // A single refraction ring along the inner edge — cheap, but reads as bent light.
             val inset = 1.5f
             drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color.Transparent,
-                        spec.material.rimLight.copy(alpha = 0.10f * spec.reflection),
-                    ),
-                    center = Offset(w * 0.5f, h * 0.5f),
-                    radius = maxOf(w, h) * 0.72f,
-                ),
+                brush = refractionRing,
                 topLeft = Offset(inset, inset),
                 size = Size(w - inset * 2, h - inset * 2),
             )
-            drawRect(
-                brush = Brush.verticalGradient(
-                    0.72f to Color.Transparent,
-                    1f to accent.copy(alpha = 0.10f * spec.reflection),
-                ),
-            )
+            drawRect(brush = bottomWash)
         }
 
         rim?.let { drawRect(brush = it, style = Stroke(width = 1.2f)) }

@@ -141,7 +141,7 @@ private fun HaloClock(now: ZonedDateTime, spec: GlassSpec, use24: Boolean, modif
             Spacer(Modifier.height(0.dp))
             Text(
                 now.format(if (use24) TIME_24 else TIME_12),
-                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Light),
+                style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum", fontWeight = FontWeight.Light),
                 color = spec.textColor,
             )
             Text(
@@ -164,7 +164,7 @@ private fun MeridianClock(now: ZonedDateTime, spec: GlassSpec, use24: Boolean, m
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             now.format(if (use24) TIME_24 else TIME_12),
-            style = MaterialTheme.typography.displayLarge.copy(
+            style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum", 
                 fontWeight = FontWeight.Light,
                 fontSize = 58.sp,
             ),
@@ -264,7 +264,7 @@ private fun MinimalClock(now: ZonedDateTime, spec: GlassSpec, use24: Boolean, mo
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             now.format(if (use24) TIME_24 else TIME_12),
-            style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Thin),
+            style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum", fontWeight = FontWeight.Thin),
             color = spec.textColor,
         )
         Text(
@@ -280,7 +280,7 @@ private fun EpochClock(now: ZonedDateTime, spec: GlassSpec, modifier: Modifier) 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             now.format(TIME_24),
-            style = MaterialTheme.typography.displayMedium.copy(
+            style = MaterialTheme.typography.displayMedium.copy(fontFeatureSettings = "tnum", 
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 2.sp,
             ),

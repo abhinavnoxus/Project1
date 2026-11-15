@@ -30,9 +30,15 @@ data class DeviceProfile(
     val isRealmeUi: Boolean,
 ) {
 
+    /**
+     * The target device. `Build.MODEL` for the Narzo 20 Pro is the marketing string, so we
+     * match the model name *and* the RMX2161 build id, because Realme ships both shapes
+     * depending on region and update.
+     */
     val isNarzo20Pro: Boolean
         get() = model.contains("narzo 20 pro", ignoreCase = true) ||
-            model.contains("RMX2161", ignoreCase = true)
+            model.contains("RMX2161", ignoreCase = true) ||
+            Build.DEVICE?.contains("RMX2161", ignoreCase = true) == true
 
     val supportsRuntimeShader: Boolean get() = sdkInt >= Build.VERSION_CODES.S
 
@@ -48,24 +54,38 @@ data class DeviceProfile(
         }
 
     /**
-     * Policy:
-     *  - Low-RAM devices and anything without GPU blur support start at Balanced.
-     *  - Devices with 6 GB+ and 8 cores may start at Ultra.
-     *  - The Narzo 20 Pro (Helio G95, 6 GB, MALI-G76) starts at Balanced; Ultra remains
-     *    available and is benchmarked rather than assumed.
+     * Render-profile policy — tuned for the Narzo 20 Pro (Mali-G76 MC4, Helio G95, 6 GB,
+     * 1080x2400 IPS at 90 Hz), and sane on anything else.
+     *
+     *  - The Mali-G76 is a 2019 mid-range GPU. Blur and AGSL refraction are the two
+     *    expensive operations on it, and this phone is *very commonly* still on Android 11
+     *    (API 30), where neither exists. On API 30 the Efficient Glass profile is selected,
+     *    which also disables the drifting backdrop — that combination is the only one I
+     *    would call safe at 90 Hz on this GPU without measurements.
+     *  - On API 31+ this device still starts at Efficient: it is a 90 Hz panel driven by a
+     *    mid-range GPU, and the honest default before benchmarking is the cheap one.
+     *  - Ultra is never auto-selected anywhere. It is a deliberate opt-in in Studio.
      */
     fun recommendedQuality(): GlassQuality = when {
         lowRamDevice -> GlassQuality.Efficient
-        totalRamMb < 4096 -> GlassQuality.Balanced
-        cpuCores >= 8 && totalRamMb >= 6144 && supportsRuntimeShader -> GlassQuality.Balanced
-        else -> GlassQuality.Balanced
+        totalRamMb < 3072 -> GlassQuality.Efficient
+        // Known mid-range target: cheap profile unless the user raises it.
+        isNarzo20Pro -> GlassQuality.Efficient
+        !supportsRuntimeShader -> GlassQuality.Efficient
+        totalRamMb < 4096 -> GlassQuality.Efficient
+        cpuCores >= 8 && totalRamMb >= 6144 -> GlassQuality.Balanced
+        else -> GlassQuality.Efficient
     }
+
+    /** True when this build should treat itself as tuned for the Narzo 20 Pro. */
+    val isTargetProfile: Boolean get() = isNarzo20Pro
 
     fun summary(): String = buildString {
         append("$manufacturer $model · Android $androidRelease (API $sdkInt)")
         append("\n${cpuCores} cores · ${totalRamMb / 1024} GB RAM · $classLabel class")
         append("\n${widthPx}×${heightPx} @ ${densityDpi}dpi · up to ${"%.0f".format(maxRefreshRate)} Hz")
         append("\nBlur: ${if (supportsBlur) "native RenderEffect" else "gradient fallback (pre-API 31)"}")
+        append("\nProfile: ${recommendedQuality().label}")
         gpuRenderer?.let { append("\nGPU: $it") }
         if (isRealmeUi) append("\nRealme UI detected: exact-alarm and background limits may apply")
     }

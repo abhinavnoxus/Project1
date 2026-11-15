@@ -46,6 +46,7 @@ data class GlassSpecData(
     val motionSpeed: Float = 1f,
     val haptics: Boolean = true,
     val sound: Boolean = false,
+    val ambientDrift: Boolean = false,
 ) {
     fun toSpec(reducedMotion: Boolean = false): GlassSpec = GlassSpec(
         material = GlassMaterial.fromId(materialId),
@@ -66,6 +67,7 @@ data class GlassSpecData(
         haptics = haptics,
         sound = sound,
         reducedMotion = reducedMotion,
+        ambientDrift = ambientDrift,
     )
 
     companion object {
@@ -87,6 +89,7 @@ data class GlassSpecData(
             motionSpeed = spec.motionSpeed,
             haptics = spec.haptics,
             sound = spec.sound,
+            ambientDrift = spec.ambientDrift,
         )
 
         fun preset(material: GlassMaterial): GlassSpecData = from(GlassSpec.presetFor(material))
