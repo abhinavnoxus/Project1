@@ -103,6 +103,28 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh issue comment 2 --body-file /tmp/apk.txt
 
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-screenshots-${{ github.run_number }}
+          path: nexora/app/build/outputs/roborazzi/*.png
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Publish screenshot as a commit comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          f=$(ls nexora/app/build/outputs/roborazzi/*.png 2>/dev/null | head -1)
+          if [ -z "$f" ]; then
+            echo "no screenshot produced"
+            exit 0
+          fi
+          echo "rendered $(basename "$f")"
+          ls -l nexora/app/build/outputs/roborazzi/ || true
+
       - name: Upload APKs
         if: always()
         uses: actions/upload-artifact@v4

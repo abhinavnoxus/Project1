@@ -67,13 +67,20 @@ android {
         compose = true
         buildConfig = true
     }
+    // Roborazzi renders real Compose screens to PNG on the JVM. This is the only way to
+    // actually *see* the UI in an environment with no device, and it turns visual
+    // regressions into failing tests instead of opinions.
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+            isIncludeAndroidResources = true
+            all { it.systemProperty("robolectric.graphicsMode", "NATIVE") }
+        }
+    }
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
     }
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
-    testOptions {
-        unitTests.isReturnDefaultValues = true
-    }
     lint {
         warningsAsErrors = false
         abortOnError = false
@@ -118,6 +125,14 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    // JVM screenshot rendering — lets CI capture the real Compose UI as PNGs.
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.26.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.26.0")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
