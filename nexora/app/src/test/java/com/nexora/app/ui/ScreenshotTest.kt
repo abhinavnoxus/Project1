@@ -1,6 +1,7 @@
 package com.nexora.app.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.nexora.app.design.AccentRamp
@@ -91,7 +92,7 @@ class ScreenshotTest {
             }
         }
         compose.waitForIdle()
-        captureRoboImage("build/outputs/roborazzi/home.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/home.png")
     }
 
     private fun sampleAlarm(): Alarm = Alarm(
