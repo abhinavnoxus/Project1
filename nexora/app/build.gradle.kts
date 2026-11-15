@@ -101,6 +101,10 @@ android {
 // Test stdout goes to the Gradle log, which is the only log channel available in this
 // build environment. Without this, a failing screenshot test is invisible.
 tasks.withType<Test>().configureEach {
+    // Screenshot tests must actually execute: a restored build-cache entry produces
+    // no PNG, which silently breaks the visual check.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
     testLogging {
         showStandardStreams = true
         events("passed", "failed", "skipped")
