@@ -37,6 +37,19 @@ OUT="${5:-/tmp/report.md}"
   fi
   echo
 
+  # Screenshot diagnostics: the unit-test stdout is the only place the render path is
+  # reported, and CI logs are not readable from this environment.
+  echo "### Screenshot render"
+  echo
+  echo '```'
+  grep -aiE "SCREENSHOT|roborazzi|Roborazzi" /tmp/unit.log 2>/dev/null | head -n 20 || true
+  echo "--- files under nexora/docs/screenshots ---"
+  ls -l nexora/docs/screenshots 2>/dev/null || echo "directory absent"
+  echo "--- any png in the workspace ---"
+  find nexora -name "*.png" -not -path "*/src/main/*" 2>/dev/null | head -n 10
+  echo '```'
+  echo
+
   echo "<details><summary>assembleDebug log (tail 100)</summary>"
   echo
   echo '```'
