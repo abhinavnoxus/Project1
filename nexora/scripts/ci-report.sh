@@ -44,9 +44,9 @@ OUT="${5:-/tmp/report.md}"
   echo '```'
   grep -aiE "SCREENSHOT|roborazzi|Roborazzi" /tmp/unit.log 2>/dev/null | head -n 20 || true
   echo "--- files under nexora/docs/screenshots ---"
-  ls -l nexora/docs/screenshots 2>/dev/null || echo "directory absent"
+  ls -l docs/screenshots 2>/dev/null || echo "directory absent"
   echo "--- any png in the workspace ---"
-  find nexora -name "*.png" -not -path "*/src/main/*" 2>/dev/null | head -n 10
+  find . -name "*.png" -path "*screenshots*" 2>/dev/null | head -n 10
   echo '```'
   echo
 

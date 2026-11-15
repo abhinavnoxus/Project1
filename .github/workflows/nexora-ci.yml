@@ -123,19 +123,14 @@ jobs:
         if: steps.unit.outcome == 'success' && github.event_name == 'push' && github.ref_type == 'branch'
         continue-on-error: true
         run: |
-          # The screenshot test writes straight into nexora/docs/screenshots. This step
-          # only has to commit it, and must never fail the build if it cannot.
-          if [ ! -d nexora/docs/screenshots ]; then
-            echo "no screenshot directory"; exit 0
-          fi
-          ls -l nexora/docs/screenshots
+          # working-directory is nexora/, so the screenshot lives at docs/screenshots.
+          if [ ! -d docs/screenshots ]; then echo "no screenshot directory"; exit 0; fi
+          ls -l docs/screenshots
+          cd ..
           git config user.name "nexora-ci"
           git config user.email "ci@nexora.local"
           git add -f nexora/docs/screenshots
-          if git diff --cached --quiet; then
-            echo "screenshots unchanged"
-            exit 0
-          fi
+          if git diff --cached --quiet; then echo "screenshots unchanged"; exit 0; fi
           git commit -m "chore: refresh rendered screenshots [skip ci]"
           git push origin "HEAD:${GITHUB_REF_NAME}" || echo "push failed (non-fatal)"
 
@@ -144,7 +139,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nexora-screenshots-${{ github.run_number }}
-          path: nexora/app/build/outputs/roborazzi/*.png
+          path: nexora/docs/screenshots/*.png
           retention-days: 14
           if-no-files-found: ignore
 
