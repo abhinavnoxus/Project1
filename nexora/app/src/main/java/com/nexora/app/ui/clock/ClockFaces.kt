@@ -94,22 +94,18 @@ private fun HaloClock(now: ZonedDateTime, spec: GlassSpec, use24: Boolean, modif
                 radius = radius,
                 center = center,
             )
-            drawCircle(
-                color = spec.material.rimLight.copy(alpha = 0.18f),
-                radius = radius * 0.995f,
-                center = center,
-                style = Stroke(width = 1.4f),
-            )
+            // No outline circle: the hour ticks ARE the outer boundary, and a second ring
+            // a hair inside them read as sloppy rather than deliberate.
 
             // 60 ticks, with hour marks longer
             for (i in 0 until 60) {
                 val angle = i * 6f - 90f
                 val isHour = i % 5 == 0
-                val inner = radius * if (isHour) 0.80f else 0.86f
-                val outer = radius * 0.93f
+                val inner = radius * if (isHour) 0.905f else 0.945f
+                val outer = radius * 0.985f
                 val rad = Math.toRadians(angle.toDouble())
                 drawLine(
-                    color = if (isHour) spec.textColor.copy(alpha = 0.55f) else spec.textColor.copy(alpha = 0.20f),
+                    color = if (isHour) spec.textColor.copy(alpha = 0.72f) else spec.textColor.copy(alpha = 0.26f),
                     start = Offset(center.x + cos(rad).toFloat() * inner, center.y + sin(rad).toFloat() * inner),
                     end = Offset(center.x + cos(rad).toFloat() * outer, center.y + sin(rad).toFloat() * outer),
                     strokeWidth = if (isHour) 2.4f else 1.2f,
@@ -124,8 +120,8 @@ private fun HaloClock(now: ZonedDateTime, spec: GlassSpec, use24: Boolean, modif
                     startAngle = 0f,
                     sweepAngle = hourFraction * 360f,
                     useCenter = false,
-                    topLeft = Offset(center.x - radius * 0.885f, center.y - radius * 0.885f),
-                    size = Size(radius * 1.77f, radius * 1.77f),
+                    topLeft = Offset(center.x - radius * 0.80f, center.y - radius * 0.80f),
+                    size = Size(radius * 1.60f, radius * 1.60f),
                     style = Stroke(width = 5f, cap = StrokeCap.Round),
                 )
             }

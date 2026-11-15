@@ -81,6 +81,9 @@ android {
                 it.systemProperty("roborazzi.record.enabled", "true")
                 it.systemProperty("roborazzi.test.record.only", "false")
                 // Absolute destination so the test never has to guess the working dir.
+                // The target device is in India. Rendering in the CI machine's UTC made
+                // a 10:00 IST event display as 04:30 and looked like a product bug.
+                it.systemProperty("user.timezone", "Asia/Kolkata")
                 it.systemProperty(
                     "nexora.screenshotDir",
                     rootProject.layout.projectDirectory.dir("docs/screenshots").asFile.absolutePath,
