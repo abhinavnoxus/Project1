@@ -58,6 +58,11 @@ recorded as such in the build report rather than silently claimed as production-
 
 ### Installing
 
+The fastest route is the prebuilt release — `docs/INSTALL.md` walks through installing on a
+phone from the release page, over USB, sideload permissions, and first-launch prompts.
+
+Or build locally:
+
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
