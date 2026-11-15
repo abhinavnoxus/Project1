@@ -92,29 +92,14 @@ class ScreenshotTest {
             }
         }
         compose.waitForIdle()
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/home.png")
-        publishToRepo("build/outputs/roborazzi/home.png")
-    }
-
-    /**
-     * Copies the rendered PNG into `nexora/docs/screenshots/` so it lands in Git and can
-     * actually be looked at by a human. CI commits it; locally it is harmless.
-     */
-    private fun publishToRepo(path: String) {
-        runCatching {
-            val moduleDir = java.io.File(System.getProperty("user.dir") ?: ".")
-            val src = java.io.File(moduleDir, path)
-            if (!src.exists()) {
-                println("SCREENSHOT MISSING at $src")
-                return@runCatching
-            }
-            val configured = System.getProperty("nexora.screenshotDir")
-            val dest = if (configured != null) java.io.File(configured) else java.io.File(moduleDir, "../../docs/screenshots")
-            dest.mkdirs()
-            val out = java.io.File(dest, src.name)
-            src.copyTo(out, overwrite = true)
-            println("SCREENSHOT PUBLISHED to ${out.absolutePath} (${out.length()} bytes, exists=${out.exists()})")
-        }.onFailure { println("SCREENSHOT PUBLISH FAILED: ${it.message}") }
+        // Write the PNG straight to its final destination. No copy step, no guessing
+        // about the working directory: the absolute path comes from Gradle.
+        val dir = System.getProperty("nexora.screenshotDir")
+            ?: java.io.File(System.getProperty("user.dir"), "../../docs/screenshots").absolutePath
+        java.io.File(dir).mkdirs()
+        val out = java.io.File(dir, "home.png")
+        compose.onRoot().captureRoboImage(out.absolutePath)
+        println("SCREENSHOT -> ${out.absolutePath} exists=${out.exists()} bytes=${out.length()}")
     }
 
     private fun sampleAlarm(): Alarm = Alarm(
