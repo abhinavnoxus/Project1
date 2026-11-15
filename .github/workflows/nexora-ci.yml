@@ -131,6 +131,7 @@ jobs:
             n=$((n+1))
           done
           echo "copied $n screenshot(s)"
+          ls -l nexora/app/build/outputs/roborazzi/ 2>/dev/null || echo "no roborazzi dir"
           if [ "$n" -eq 0 ]; then exit 0; fi
           git config user.name "nexora-ci"
           git config user.email "ci@nexora.local"
