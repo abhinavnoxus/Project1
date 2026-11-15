@@ -85,7 +85,7 @@ data class DeviceProfile(
         append("\n${cpuCores} cores · ${totalRamMb / 1024} GB RAM · $classLabel class")
         append("\n${widthPx}×${heightPx} @ ${densityDpi}dpi · up to ${"%.0f".format(maxRefreshRate)} Hz")
         append("\nBlur: ${if (supportsBlur) "native RenderEffect" else "gradient fallback (pre-API 31)"}")
-        append("\nProfile: ${recommendedQuality().label}")
+        append("\nRender profile: ${recommendedQuality().displayName}")
         gpuRenderer?.let { append("\nGPU: $it") }
         if (isRealmeUi) append("\nRealme UI detected: exact-alarm and background limits may apply")
     }
