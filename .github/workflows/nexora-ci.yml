@@ -121,28 +121,23 @@ jobs:
 
       - name: Commit rendered screenshot to the repo
         if: steps.unit.outcome == 'success' && github.event_name == 'push' && github.ref_type == 'branch'
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          mkdir -p nexora/docs/screenshots
-          echo "--- searching for rendered pngs ---"
-          find . -name "*.png" -newermt '-30 minutes' -not -path "*/androidTest/*" 2>/dev/null | head -20
-          find . -path "*roborazzi*" -name "*.png" 2>/dev/null | head -20
-          echo "--- copying ---"
-          n=0
-          for f in nexora/app/build/outputs/roborazzi/*.png nexora/docs/screenshots/*.png; do
-            [ -e "$f" ] || continue
-            cp "$f" "nexora/docs/screenshots/$(basename "$f")"
-            n=$((n+1))
-          done
-          echo "copied $n screenshot(s)"
-          ls -l nexora/app/build/outputs/roborazzi/ 2>/dev/null || echo "no roborazzi dir"
-          if [ "$n" -eq 0 ]; then echo "no png found to commit"; exit 0; fi
+          # The screenshot test writes straight into nexora/docs/screenshots. This step
+          # only has to commit it, and must never fail the build if it cannot.
+          if [ ! -d nexora/docs/screenshots ]; then
+            echo "no screenshot directory"; exit 0
+          fi
+          ls -l nexora/docs/screenshots
           git config user.name "nexora-ci"
           git config user.email "ci@nexora.local"
-          git add nexora/docs/screenshots
-          if git diff --cached --quiet; then echo "screenshots unchanged"; exit 0; fi
+          git add -f nexora/docs/screenshots
+          if git diff --cached --quiet; then
+            echo "screenshots unchanged"
+            exit 0
+          fi
           git commit -m "chore: refresh rendered screenshots [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}" || echo "push failed (non-fatal)"
 
       - name: Upload screenshots
         if: steps.unit.outcome == 'success' 
