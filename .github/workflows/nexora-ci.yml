@@ -124,15 +124,19 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p nexora/docs/screenshots
+          echo "--- searching for rendered pngs ---"
+          find . -name "*.png" -newermt '-30 minutes' -not -path "*/androidTest/*" 2>/dev/null | head -20
+          find . -path "*roborazzi*" -name "*.png" 2>/dev/null | head -20
+          echo "--- copying ---"
           n=0
-          for f in nexora/app/build/outputs/roborazzi/*.png; do
+          for f in nexora/app/build/outputs/roborazzi/*.png nexora/docs/screenshots/*.png; do
             [ -e "$f" ] || continue
             cp "$f" "nexora/docs/screenshots/$(basename "$f")"
             n=$((n+1))
           done
           echo "copied $n screenshot(s)"
           ls -l nexora/app/build/outputs/roborazzi/ 2>/dev/null || echo "no roborazzi dir"
-          if [ "$n" -eq 0 ]; then exit 0; fi
+          if [ "$n" -eq 0 ]; then echo "no png found to commit"; exit 0; fi
           git config user.name "nexora-ci"
           git config user.email "ci@nexora.local"
           git add nexora/docs/screenshots
