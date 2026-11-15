@@ -96,6 +96,16 @@ android {
     }
 }
 
+// Test stdout goes to the Gradle log, which is the only log channel available in this
+// build environment. Without this, a failing screenshot test is invisible.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        showStandardStreams = true
+        events("passed", "failed", "skipped")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
