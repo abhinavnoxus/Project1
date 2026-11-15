@@ -93,6 +93,27 @@ class ScreenshotTest {
         }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/home.png")
+        publishToRepo("build/outputs/roborazzi/home.png")
+    }
+
+    /**
+     * Copies the rendered PNG into `nexora/docs/screenshots/` so it lands in Git and can
+     * actually be looked at by a human. CI commits it; locally it is harmless.
+     */
+    private fun publishToRepo(path: String) {
+        runCatching {
+            val moduleDir = java.io.File(System.getProperty("user.dir") ?: ".")
+            val src = java.io.File(moduleDir, path)
+            if (!src.exists()) {
+                println("screenshot not found at $src")
+                return@runCatching
+            }
+            val dest = java.io.File(moduleDir, "../../docs/screenshots").canonicalFile
+            dest.mkdirs()
+            val out = java.io.File(dest, src.name)
+            src.copyTo(out, overwrite = true)
+            println("screenshot published to $out (${out.length()} bytes)")
+        }.onFailure { println("screenshot publish failed: ${it.message}") }
     }
 
     private fun sampleAlarm(): Alarm = Alarm(
